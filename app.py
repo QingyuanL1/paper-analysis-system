@@ -1,0 +1,384 @@
+from flask import Flask, jsonify, request, render_template
+import logging
+from flask_cors import CORS
+from prototype import get_connection, build_query, initialize_database
+from sentiment_analyzer import SentimentAnalyzer
+from paper_clustering import PaperClusterer
+from arxiv_client import ArxivClient
+import sqlite3
+import json
+
+app = Flask(__name__)
+CORS(app)
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+initialize_database()
+sentiment_analyzer = SentimentAnalyzer()
+paper_clusterer = PaperClusterer()
+arxiv_client = ArxivClient()
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/search', methods=['GET'])
+def search_papers():
+    try:
+        entity_type = request.args.get('type', '').lower()
+        entity_name = request.args.get('name', '')
+        limit = request.args.get('limit', 'all')
+
+        logger.info(f"Received search request - type: {entity_type}, name: {entity_name}, limit: {limit}")
+
+        if not entity_type or not entity_name:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing required parameters: type and name'
+            }), 400
+
+        if entity_type not in ['person', 'organisation', 'work']:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid entity type. Must be one of: person, organisation, work'
+            }), 400
+
+        if limit not in ['one', 'all']:
+            return jsonify({
+                'status': 'error',
+                'message': 'Invalid limit. Must be one of: one, all'
+            }), 400
+
+        query_string = f"get {limit} papers that mention {entity_type} {entity_name}"
+        logger.debug(f"Built query string: {query_string}")
+        
+        conn = get_connection("data/test_db.sqlite")
+        cur = conn.cursor()
+        
+        sql_query = build_query(query_string)
+        logger.debug(f"Generated SQL query: {sql_query}")
+        cur.execute(sql_query)
+        results = cur.fetchall()
+        logger.info(f"Found {len(results)} results")
+        
+        formatted_results = []
+        for result in results:
+            formatted_results.append({
+                'paper_id': result[0],
+                'paper_title': result[1],
+                'paper_pdf': result[2],
+                'paper_docx': result[3],
+                'paper_json': result[4],
+                'paper_entities': result[5],
+                'entity_name': result[9],
+                'entity_type': result[10]
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'count': len(formatted_results),
+            'results': formatted_results
+        })
+    
+    except Exception as e:
+        logger.error(f"Error processing request: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/analyze/sentiment', methods=['POST'])
+def analyze_sentiment():
+    try:
+        data = request.get_json()
+        doc_path = data.get('doc_path')
+        
+        if not doc_path:
+            return jsonify({
+                'status': 'error',
+                'message': 'Missing document path'
+            }), 400
+            
+        sentiment_results = sentiment_analyzer.analyze_document(doc_path)
+        
+        if 'error' in sentiment_results:
+            return jsonify({
+                'status': 'error',
+                'message': sentiment_results['error']
+            }), 500
+            
+        sentiment_results['sentiment_label'] = sentiment_analyzer.get_sentiment_label(
+            sentiment_results['overall_sentiment']['polarity']
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'results': sentiment_results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error analyzing sentiment: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/papers/<int:paper_id>/sentiment', methods=['GET'])
+def get_paper_sentiment(paper_id):
+    try:
+        logger.info(f"Getting sentiment for paper ID: {paper_id}")
+        
+        conn = get_connection("data/test_db.sqlite")
+        cur = conn.cursor()
+        cur.execute("SELECT paper_json FROM papers WHERE paper_id = ?", (paper_id,))
+        result = cur.fetchone()
+        
+        if not result:
+            logger.error(f"Paper not found with ID: {paper_id}")
+            return jsonify({
+                'status': 'error',
+                'message': 'Paper not found'
+            }), 404
+            
+        json_path = result[0]
+        logger.info(f"Found JSON path for paper: {json_path}")
+            
+        sentiment_results = sentiment_analyzer.analyze_document(json_path)
+        
+        if 'error' in sentiment_results:
+            logger.error(f"Error in sentiment analysis: {sentiment_results['error']}")
+            return jsonify({
+                'status': 'error',
+                'message': sentiment_results['error']
+            }), 500
+            
+        sentiment_results['sentiment_label'] = sentiment_analyzer.get_sentiment_label(
+            sentiment_results['overall_sentiment']['polarity']
+        )
+        
+        logger.info("Sentiment analysis completed successfully")
+        return jsonify({
+            'status': 'success',
+            'paper_id': paper_id,
+            'results': sentiment_results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting paper sentiment: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/papers/clusters', methods=['GET'])
+def get_paper_clusters():
+    try:
+        # 获取查询参数
+        n_clusters = int(request.args.get('n_clusters', 5))
+        category = request.args.get('category', None)
+        
+        logger.info(f"Getting paper clusters with n_clusters={n_clusters}, category={category}")
+        
+        # 从数据库获取论文数据
+        conn = get_connection("data/test_db.sqlite")
+        cur = conn.cursor()
+        
+        if category:
+            cur.execute("""
+                SELECT paper_id, paper_name as title, paper_json
+                FROM papers 
+                WHERE paper_json LIKE ?
+            """, (f"%{category}%",))
+        else:
+            cur.execute("""
+                SELECT paper_id, paper_name as title, paper_json
+                FROM papers
+            """)
+            
+        papers = cur.fetchall()
+        
+        if not papers:
+            return jsonify({
+                'status': 'error',
+                'message': 'No papers found'
+            }), 404
+            
+        # 处理论文数据
+        papers_data = []
+        for paper in papers:
+            try:
+                with open(paper[2], 'r', encoding='utf-8') as f:
+                    paper_json = json.load(f)
+                    
+                # 提取摘要
+                abstract = ""
+                for item in paper_json:
+                    if isinstance(item, dict) and item.get('TYPE') == 'text':
+                        abstract += item.get('VALUE', '') + " "
+                        
+                papers_data.append({
+                    'paper_id': paper[0],
+                    'title': paper[1],
+                    'abstract': abstract.strip()
+                })
+            except Exception as e:
+                logger.warning(f"Error processing paper {paper[0]}: {str(e)}")
+                continue
+        
+        # 执行聚类
+        paper_clusterer.n_clusters = n_clusters
+        clustering_results = paper_clusterer.process_papers(papers_data)
+        
+        if 'error' in clustering_results:
+            return jsonify({
+                'status': 'error',
+                'message': clustering_results['error']
+            }), 500
+            
+        return jsonify({
+            'status': 'success',
+            'n_clusters': n_clusters,
+            'results': clustering_results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting paper clusters: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    logger.info("Health check requested")
+    return jsonify({
+        'status': 'healthy',
+        'message': 'Service is running'
+    })
+
+@app.route('/arxiv/search', methods=['GET'])
+def search_arxiv_papers():
+    try:
+        query = request.args.get('query', '')
+        start = int(request.args.get('start', 0))
+        max_results = int(request.args.get('max_results', 10))
+        should_cluster = request.args.get('cluster', 'false').lower() == 'true'
+        n_clusters = int(request.args.get('n_clusters', 5))
+        
+        logger.info(f"Searching arXiv papers: query={query}, start={start}, max_results={max_results}")
+        
+        # 搜索论文
+        papers = arxiv_client.search_papers(query, start, max_results)
+        
+        if isinstance(papers, dict) and 'error' in papers:
+            return jsonify({
+                'status': 'error',
+                'message': papers['error']
+            }), 500
+            
+        # 保存到数据库
+        conn = get_connection("data/test_db.sqlite")
+        try:
+            arxiv_client.save_papers_to_db(papers, conn)
+        except Exception as e:
+            logger.error(f"Error saving papers to database: {str(e)}")
+            # 继续处理，因为这不是致命错误
+        
+        # 如果请求聚类
+        if should_cluster and papers:
+            papers_data = [{
+                'paper_id': paper['arxiv_id'],
+                'title': paper['title'],
+                'abstract': paper['abstract']
+            } for paper in papers]
+            
+            paper_clusterer.n_clusters = min(n_clusters, len(papers))
+            clustering_results = paper_clusterer.process_papers(papers_data)
+            
+            if 'error' in clustering_results:
+                return jsonify({
+                    'status': 'error',
+                    'message': clustering_results['error']
+                }), 500
+                
+            return jsonify({
+                'status': 'success',
+                'papers': papers,
+                'clusters': clustering_results
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'papers': papers
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching arXiv papers: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/arxiv/paper/<arxiv_id>', methods=['GET'])
+def get_arxiv_paper(arxiv_id):
+    try:
+        logger.info(f"Getting arXiv paper: {arxiv_id}")
+        
+        # 先从数据库查找
+        conn = get_connection("data/test_db.sqlite")
+        cur = conn.cursor()
+        
+        cur.execute("SELECT json_data FROM arxiv_papers WHERE arxiv_id = ?", (arxiv_id,))
+        result = cur.fetchone()
+        
+        if result:
+            paper = json.loads(result[0])
+        else:
+            # 如果数据库中没有，从API获取
+            paper = arxiv_client.get_paper_by_id(arxiv_id)
+            if isinstance(paper, dict) and 'error' not in paper:
+                try:
+                    arxiv_client.save_papers_to_db([paper], conn)
+                except Exception as e:
+                    logger.error(f"Error saving paper to database: {str(e)}")
+        
+        if isinstance(paper, dict) and 'error' in paper:
+            return jsonify({
+                'status': 'error',
+                'message': paper['error']
+            }), 404 if paper['error'] == 'Paper not found' else 500
+            
+        return jsonify({
+            'status': 'success',
+            'paper': paper
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting arXiv paper: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+@app.route('/arxiv')
+def arxiv_page():
+    return render_template('arxiv.html')
+
+if __name__ == '__main__':
+    logger.info("Starting Flask application...")
+    app.run(host='0.0.0.0', port=5002, debug=True) 

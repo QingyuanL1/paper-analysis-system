@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>arXiv论文搜索 - Academic Paper Analysis System</title>
+    <link
+      href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #f8f9fa;
+        font-family: "Microsoft YaHei", sans-serif;
+      }
+      .navbar {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        padding: 1rem 0;
+        margin-bottom: 0;
+      }
+      .navbar-brand,
+      .nav-link {
+        color: white !important;
+      }
+      .nav-link:hover {
+        color: rgba(255, 255, 255, 0.8) !important;
+      }
+      .header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .search-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+      }
+      .results-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+      }
+      .paper-card {
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .paper-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      .loading-spinner {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+      }
+      .cluster-container {
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+      }
+      .cluster-terms {
+        display: inline-block;
+        background-color: #e9ecef;
+        padding: 0.3rem 0.6rem;
+        margin: 0.2rem;
+        border-radius: 15px;
+        font-size: 0.9rem;
+      }
+      #clusterVisualization {
+        width: 100%;
+        height: 400px;
+        margin-top: 1rem;
+      }
+      .abstract-text {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 1rem;
+      }
+      .authors-list {
+        color: #2a5298;
+        font-size: 0.9rem;
+        margin: 0.5rem 0;
+      }
+      .categories-list {
+        font-size: 0.8rem;
+      }
+      .category-tag {
+        display: inline-block;
+        background-color: #e9ecef;
+        padding: 0.2rem 0.5rem;
+        margin: 0.1rem;
+        border-radius: 12px;
+      }
+      .skeleton-loading {
+        padding: 1rem;
+      }
+      .skeleton-line {
+        height: 1rem;
+        background: linear-gradient(
+          90deg,
+          #f0f0f0 25%,
+          #e0e0e0 50%,
+          #f0f0f0 75%
+        );
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+      }
+      @keyframes loading {
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
+      }
+      .paper-metadata {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      .paper-metadata dt {
+        color: #666;
+      }
+      .paper-links {
+        margin-top: 1rem;
+      }
+      .paper-links a {
+        margin-right: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg">
+      <div class="container">
+        <a class="navbar-brand" href="/">
+          <i class="fas fa-book-reader me-2"></i>Paper Analysis System
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="/">Local Papers</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/arxiv">arXiv Papers</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="header">
+      <div class="container">
+        <h1>arXiv Paper Search</h1>
+        <p class="mb-0">
+          Real-time search and cluster analysis of latest arXiv papers
+        </p>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="search-container">
+        <h2 class="mb-4"><i class="fas fa-search me-2"></i>Search Papers</h2>
+        <form id="arxivSearchForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Search Keywords</label>
+            <input
+              type="text"
+              class="form-control"
+              name="query"
+              placeholder="Enter search keywords"
+              required
+            />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Results Count</label>
+            <input
+              type="number"
+              class="form-control"
+              name="max_results"
+              value="10"
+              min="1"
+              max="50"
+            />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Enable Clustering</label>
+            <select class="form-select" name="cluster">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Number of Clusters</label>
+            <input
+              type="number"
+              class="form-control"
+              name="n_clusters"
+              value="3"
+              min="2"
+              max="10"
+            />
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-search me-2"></i>Search
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Searching and analyzing papers, please wait...</p>
+      </div>
+
+      <div class="results-container" style="display: none">
+        <h2 class="mb-4"><i class="fas fa-list me-2"></i>Search Results</h2>
+        <div id="searchResults"></div>
+        <div id="clusterResults" style="display: none">
+          <h3 class="mt-4 mb-3">Clustering Results</h3>
+          <div id="clusterContainer"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加模态框 -->
+    <div class="modal fade" id="paperDetailModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Paper Details</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="paper-detail-content">
+              <div class="skeleton-loading">
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+                <div class="skeleton-line"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script>
+      function showLoading() {
+        $(".loading-spinner").show();
+      }
+
+      function hideLoading() {
+        $(".loading-spinner").hide();
+      }
+
+      function displayArxivResults(data) {
+        let resultsHtml = "";
+
+        // 显示论文列表
+        data.papers.forEach((paper) => {
+          resultsHtml += `
+            <div class="paper-card">
+              <h4>${paper.title}</h4>
+              <div class="authors-list">
+                <i class="fas fa-users me-2"></i>${paper.authors.join(", ")}
+              </div>
+              <div class="categories-list mb-2">
+                ${paper.categories
+                  .map(
+                    (cat) => `
+                  <span class="category-tag">${cat}</span>
+                `
+                  )
+                  .join("")}
+              </div>
+              <p class="abstract-text">${paper.abstract}</p>
+              <div class="d-flex gap-2">
+                <a href="${
+                  paper.pdf_url
+                }" target="_blank" class="btn btn-sm btn-outline-primary">
+                  <i class="fas fa-file-pdf me-2"></i>PDF
+                </a>
+                <button class="btn btn-sm btn-outline-secondary" onclick="showPaperDetail('${
+                  paper.arxiv_id
+                }')">
+                  <i class="fas fa-info-circle me-2"></i>Details
+                </button>
+              </div>
+            </div>
+          `;
+        });
+
+        $("#searchResults").html(resultsHtml);
+
+        // 如果有聚类结果，显示聚类信息
+        if (data.clusters) {
+          $("#clusterResults").show();
+          let clusterHtml = "";
+
+          // 显示每个簇的关键词
+          Object.entries(data.clusters.cluster_terms).forEach(
+            ([clusterId, terms]) => {
+              clusterHtml += `
+              <div class="cluster-container">
+                <h5>Cluster ${parseInt(clusterId) + 1}</h5>
+                <div>
+                  ${terms
+                    .map(
+                      (term) => `
+                    <span class="cluster-terms">${term}</span>
+                  `
+                    )
+                    .join("")}
+                </div>
+              </div>
+            `;
+            }
+          );
+
+          $("#clusterContainer").html(clusterHtml);
+
+          // 添加可视化
+          const visualizationDiv = $('<div id="clusterVisualization"></div>');
+          $("#clusterContainer").append(visualizationDiv);
+
+          // 使用ECharts绘制散点图
+          const chart = echarts.init(
+            document.getElementById("clusterVisualization")
+          );
+
+          // 准备数据
+          const series = Object.entries(data.clusters.clusters).map(
+            ([clusterId, papers]) => ({
+              name: `Cluster ${parseInt(clusterId) + 1}`,
+              type: "scatter",
+              data: papers.map((paper) => [paper.x, paper.y]),
+              symbolSize: 10,
+            })
+          );
+
+          const option = {
+            title: {
+              text: "Paper Clustering Visualization",
+              left: "center",
+            },
+            tooltip: {
+              formatter: function (params) {
+                const paper = data.clusters.clusters[params.seriesIndex].find(
+                  (p) => p.x === params.data[0] && p.y === params.data[1]
+                );
+                return `${paper.title}`;
+              },
+            },
+            xAxis: {},
+            yAxis: {},
+            series: series,
+          };
+
+          chart.setOption(option);
+        }
+      }
+
+      function showPaperDetail(arxivId) {
+        const modal = new bootstrap.Modal(
+          document.getElementById("paperDetailModal")
+        );
+        modal.show();
+
+        $(".paper-detail-content").html(`
+          <div class="skeleton-loading">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line"></div>
+          </div>
+        `);
+
+        fetch(`/arxiv/paper/${arxivId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "success") {
+              const paper = data.paper;
+              const content = `
+                <div class="paper-metadata">
+                  <dl>
+                    <dt>Title</dt>
+                    <dd class="mb-3">${paper.title}</dd>
+                    
+                    <dt>Authors</dt>
+                    <dd class="mb-3">${paper.authors.join(", ")}</dd>
+                    
+                    <dt>Categories</dt>
+                    <dd class="mb-3">
+                      ${paper.categories
+                        .map(
+                          (cat) => `
+                        <span class="category-tag">${cat}</span>
+                      `
+                        )
+                        .join("")}
+                    </dd>
+                    
+                    <dt>Published Date</dt>
+                    <dd class="mb-3">${new Date(
+                      paper.published
+                    ).toLocaleDateString()}</dd>
+                    
+                    <dt>Last Updated</dt>
+                    <dd class="mb-3">${new Date(
+                      paper.updated
+                    ).toLocaleDateString()}</dd>
+                    
+                    <dt>Abstract</dt>
+                    <dd class="mb-3">${paper.abstract}</dd>
+                  </dl>
+                  
+                  <div class="paper-links">
+                    <a href="${
+                      paper.pdf_url
+                    }" target="_blank" class="btn btn-primary btn-sm">
+                      <i class="fas fa-file-pdf me-2"></i>Download PDF
+                    </a>
+                    <a href="https://arxiv.org/abs/${
+                      paper.arxiv_id
+                    }" target="_blank" class="btn btn-outline-secondary btn-sm">
+                      <i class="fas fa-external-link-alt me-2"></i>View on arXiv
+                    </a>
+                  </div>
+                </div>
+              `;
+              $(".paper-detail-content").html(content);
+            } else {
+              $(".paper-detail-content").html(`
+                <div class="alert alert-danger">
+                  Failed to get paper details: ${data.message}
+                </div>
+              `);
+            }
+          })
+          .catch((error) => {
+            $(".paper-detail-content").html(`
+              <div class="alert alert-danger">
+                Error getting paper details: ${error.message}
+              </div>
+            `);
+          });
+      }
+
+      $(document).ready(function () {
+        $("#arxivSearchForm").on("submit", function (e) {
+          e.preventDefault();
+          const formData = new FormData(this);
+          const searchParams = new URLSearchParams();
+          for (const pair of formData.entries()) {
+            searchParams.append(pair[0], pair[1]);
+          }
+
+          showLoading();
+          $(".results-container").hide();
+          $("#clusterResults").hide();
+
+          fetch(`/arxiv/search?${searchParams.toString()}`)
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "success") {
+                displayArxivResults(data);
+                $(".results-container").show();
+              } else {
+                $("#searchResults").html(`
+                  <div class="alert alert-danger">
+                    Search failed: ${data.message}
+                  </div>
+                `);
+                $(".results-container").show();
+              }
+            })
+            .catch((error) => {
+              $("#searchResults").html(`
+                <div class="alert alert-danger">
+                  Search error: ${error.message}
+                </div>
+              `);
+              $(".results-container").show();
+            })
+            .finally(() => {
+              hideLoading();
+            });
+        });
+      });
+    </script>
+  </body>
+</html>
