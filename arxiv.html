@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>arXiv论文搜索 - Academic Paper Analysis System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css"
       rel="stylesheet"
@@ -37,111 +38,78 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
       .search-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        margin-bottom: 2rem;
+        @apply bg-white p-8 rounded-xl shadow-lg mb-8;
       }
       .results-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+        @apply bg-white p-8 rounded-xl shadow-lg;
       }
       .paper-card {
-        border: 1px solid #eee;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      .paper-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        @apply border border-gray-200 rounded-xl p-6 mb-4 transition-all hover:shadow-lg hover:-translate-y-1;
       }
       .loading-spinner {
-        display: none;
-        text-align: center;
-        padding: 2rem;
+        @apply hidden text-center py-8;
       }
       .cluster-container {
-        margin-top: 2rem;
-        padding: 1rem;
-        background-color: #f8f9fa;
-        border-radius: 8px;
+        @apply mt-8 p-6 bg-gray-50 rounded-xl;
       }
       .cluster-terms {
-        display: inline-block;
-        background-color: #e9ecef;
-        padding: 0.3rem 0.6rem;
-        margin: 0.2rem;
-        border-radius: 15px;
-        font-size: 0.9rem;
+        @apply inline-block bg-blue-100 px-3 py-1 m-1 rounded-full text-sm text-blue-800;
       }
       #clusterVisualization {
-        width: 100%;
-        height: 400px;
-        margin-top: 1rem;
+        @apply w-full h-[600px] mt-8 rounded-xl shadow-md;
       }
       .abstract-text {
-        font-size: 0.9rem;
-        color: #666;
-        margin-top: 1rem;
+        @apply text-gray-600 mt-4 leading-relaxed;
       }
       .authors-list {
-        color: #2a5298;
-        font-size: 0.9rem;
-        margin: 0.5rem 0;
+        @apply text-blue-700 text-sm my-2;
       }
       .categories-list {
-        font-size: 0.8rem;
+        @apply text-sm;
       }
       .category-tag {
-        display: inline-block;
-        background-color: #e9ecef;
-        padding: 0.2rem 0.5rem;
-        margin: 0.1rem;
-        border-radius: 12px;
-      }
-      .skeleton-loading {
-        padding: 1rem;
-      }
-      .skeleton-line {
-        height: 1rem;
-        background: linear-gradient(
-          90deg,
-          #f0f0f0 25%,
-          #e0e0e0 50%,
-          #f0f0f0 75%
-        );
-        background-size: 200% 100%;
-        animation: loading 1.5s infinite;
-        border-radius: 4px;
-        margin-bottom: 0.5rem;
-      }
-      @keyframes loading {
-        0% {
-          background-position: 200% 0;
-        }
-        100% {
-          background-position: -200% 0;
-        }
+        @apply inline-block bg-gray-100 px-2 py-1 m-1 rounded-full text-gray-700 text-xs;
       }
       .paper-metadata {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
+        @apply bg-gray-50 p-6 rounded-xl mb-4;
       }
       .paper-metadata dt {
-        color: #666;
+        @apply text-gray-600 font-medium mb-1;
+      }
+      .paper-metadata dd {
+        @apply mb-4;
       }
       .paper-links {
-        margin-top: 1rem;
+        @apply mt-4 space-x-4;
       }
       .paper-links a {
-        margin-right: 1rem;
+        @apply inline-flex items-center;
+      }
+
+      /* 新增的样式 */
+      .search-form {
+        @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6;
+      }
+      .form-group {
+        @apply flex flex-col space-y-2;
+      }
+      .form-label {
+        @apply text-gray-700 font-medium;
+      }
+      .form-input {
+        @apply px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+      }
+      .search-btn {
+        @apply w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mt-6;
+      }
+      .cluster-section {
+        @apply mt-12 space-y-6;
+      }
+      .cluster-title {
+        @apply text-xl font-semibold text-gray-800 mb-4;
+      }
+      .cluster-grid {
+        @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
       }
     </style>
   </head>
@@ -245,7 +213,7 @@
         <div id="searchResults"></div>
         <div id="clusterResults" style="display: none">
           <h3 class="mt-4 mb-3">Clustering Results</h3>
-          <div id="clusterContainer"></div>
+          <div id="clusterContainer" style="height: 600px; width: 100%"></div>
         </div>
       </div>
     </div>
@@ -376,6 +344,12 @@
             title: {
               text: "Paper Clustering Visualization",
               left: "center",
+              top: 20,
+              textStyle: {
+                fontSize: 20,
+                fontWeight: "bold",
+                color: "#333",
+              },
             },
             tooltip: {
               formatter: function (params) {
@@ -384,10 +358,96 @@
                 );
                 return `${paper.title}`;
               },
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              borderColor: "#ccc",
+              borderWidth: 1,
+              padding: [10, 15],
+              textStyle: {
+                color: "#333",
+                fontSize: 14,
+              },
             },
-            xAxis: {},
-            yAxis: {},
-            series: series,
+            grid: {
+              top: 100,
+              right: 100,
+              bottom: 80,
+              left: 100,
+              containLabel: true,
+            },
+            xAxis: {
+              type: "value",
+              nameTextStyle: {
+                fontSize: 14,
+                color: "#666",
+              },
+              axisLine: {
+                show: true,
+                lineStyle: {
+                  color: "#999",
+                },
+              },
+              axisTick: {
+                show: true,
+              },
+              axisLabel: {
+                show: true,
+                fontSize: 12,
+                color: "#666",
+                margin: 12,
+              },
+              splitLine: {
+                lineStyle: {
+                  type: "dashed",
+                  color: "#ddd",
+                },
+              },
+            },
+            yAxis: {
+              type: "value",
+              nameTextStyle: {
+                fontSize: 14,
+                color: "#666",
+              },
+              axisLine: {
+                show: true,
+                lineStyle: {
+                  color: "#999",
+                },
+              },
+              axisTick: {
+                show: true,
+              },
+              axisLabel: {
+                show: true,
+                fontSize: 12,
+                color: "#666",
+                margin: 12,
+              },
+              splitLine: {
+                lineStyle: {
+                  type: "dashed",
+                  color: "#ddd",
+                },
+              },
+            },
+            series: series.map((s) => ({
+              ...s,
+              symbolSize: 18,
+              symbol: "circle",
+              emphasis: {
+                scale: 1.5,
+                itemStyle: {
+                  shadowBlur: 10,
+                  shadowColor: "rgba(0,0,0,0.3)",
+                },
+              },
+              itemStyle: {
+                borderWidth: 2,
+                borderColor: "#fff",
+                shadowBlur: 5,
+                shadowColor: "rgba(0,0,0,0.2)",
+              },
+            })),
           };
 
           chart.setOption(option);

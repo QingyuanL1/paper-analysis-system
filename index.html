@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Academic Paper Analysis System</title>
+    <title>学术论文分析系统</title>
     <link
       href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css"
       rel="stylesheet"
@@ -126,7 +126,7 @@
     <nav class="navbar navbar-expand-lg">
       <div class="container">
         <a class="navbar-brand" href="/">
-          <i class="fas fa-book-reader me-2"></i>Paper Analysis System
+          <i class="fas fa-book-reader me-2"></i>论文分析系统
         </a>
         <button
           class="navbar-toggler"
@@ -139,10 +139,10 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav">
             <li class="nav-item">
-              <a class="nav-link active" href="/">Local Papers</a>
+              <a class="nav-link active" href="/">本地论文</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/arxiv">arXiv Papers</a>
+              <a class="nav-link" href="/arxiv">arXiv论文</a>
             </li>
           </ul>
         </div>
@@ -151,45 +151,106 @@
 
     <div class="header">
       <div class="container">
-        <h1>Local Paper Analysis</h1>
-        <p class="mb-0">
-          NLP-based Paper Content Analysis and Sentiment Assessment
-        </p>
+        <h1>统一论文搜索</h1>
+        <p class="mb-0">基于NLP的论文内容分析与情感评估系统</p>
       </div>
     </div>
 
     <div class="container">
       <div class="search-container">
-        <h2 class="mb-4"><i class="fas fa-search me-2"></i>Paper Search</h2>
+        <h2 class="mb-4"><i class="fas fa-search me-2"></i>搜索选项</h2>
         <form id="searchForm" class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Entity Type</label>
-            <select class="form-select" name="type" required>
-              <option value="person">Person</option>
-              <option value="organisation">Organization</option>
-              <option value="work">Work</option>
+          <div class="col-md-3">
+            <label class="form-label">搜索范围</label>
+            <select class="form-select" name="search_type">
+              <option value="all">全部</option>
+              <option value="local">仅本地</option>
+              <option value="arxiv">仅arXiv</option>
             </select>
           </div>
-          <div class="col-md-6">
-            <label class="form-label">Keywords</label>
+          <div class="col-md-3 local-field">
+            <label class="form-label">实体类型</label>
+            <select class="form-select" name="type">
+              <option value="person">人物</option>
+              <option value="organisation">组织</option>
+              <option value="work">作品</option>
+            </select>
+          </div>
+          <div class="col-md-4 local-field">
+            <label class="form-label">实体名称</label>
             <input
               type="text"
               class="form-control"
               name="name"
-              placeholder="Enter search keywords"
-              required
+              placeholder="输入实体名称（作者/组织/作品）"
             />
           </div>
-          <div class="col-md-2">
-            <label class="form-label">Result Limit</label>
+          <div class="col-md-2 local-field">
+            <label class="form-label">结果限制</label>
             <select class="form-select" name="limit">
-              <option value="all">All</option>
-              <option value="one">Single</option>
+              <option value="all">全部</option>
+              <option value="one">单个</option>
             </select>
+          </div>
+          <div class="col-md-6 arxiv-field">
+            <label class="form-label">额外的arXiv关键词</label>
+            <input
+              type="text"
+              class="form-control"
+              name="query"
+              placeholder="可选：输入额外的arXiv搜索关键词"
+            />
+            <div class="form-text">
+              当选择"全部"或"仅本地"时，系统会自动使用实体名称搜索arXiv
+            </div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">最大结果数</label>
+            <input
+              type="number"
+              class="form-control"
+              name="max_results"
+              value="10"
+              min="1"
+              max="50"
+            />
+            <div class="form-text">每个来源最多显示的论文数量</div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">聚类选项</label>
+            <div class="input-group">
+              <div class="input-group-text">
+                <input
+                  type="checkbox"
+                  name="cluster"
+                  value="true"
+                  class="form-check-input mt-0"
+                  id="clusterCheckbox"
+                />
+                <label class="form-check-label ms-2 mb-0" for="clusterCheckbox">
+                  启用聚类
+                </label>
+              </div>
+              <input
+                type="number"
+                class="form-control"
+                name="n_clusters"
+                value="5"
+                min="2"
+                max="10"
+                placeholder="聚类数量"
+                id="clusterNumber"
+                disabled
+              />
+            </div>
+            <div class="form-text">对所有搜索结果进行主题聚类</div>
           </div>
           <div class="col-12">
             <button type="submit" class="btn btn-primary">
-              <i class="fas fa-search me-2"></i>Search
+              <i class="fas fa-search me-2"></i>开始搜索
+            </button>
+            <button type="reset" class="btn btn-secondary ms-2">
+              <i class="fas fa-redo me-2"></i>重置
             </button>
           </div>
         </form>
@@ -197,14 +258,39 @@
 
       <div class="loading-spinner">
         <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
+          <span class="visually-hidden">加载中...</span>
         </div>
-        <p class="mt-2">Analyzing paper content, please wait...</p>
+        <p class="mt-2">正在分析论文内容，请稍候...</p>
       </div>
 
       <div class="results-container" style="display: none">
-        <h2 class="mb-4"><i class="fas fa-list me-2"></i>Search Results</h2>
-        <div id="searchResults"></div>
+        <h2 class="mb-4"><i class="fas fa-list me-2"></i>搜索结果</h2>
+        <div id="searchResults">
+          <div class="row">
+            <div class="col-md-6 local-results">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h3>本地论文</h3>
+                <span class="badge bg-primary" id="localCount">0</span>
+              </div>
+              <div id="localResults"></div>
+            </div>
+            <div class="col-md-6 arxiv-results">
+              <div
+                class="d-flex justify-content-between align-items-center mb-3"
+              >
+                <h3>arXiv论文</h3>
+                <span class="badge bg-primary" id="arxivCount">0</span>
+              </div>
+              <div id="arxivResults"></div>
+            </div>
+          </div>
+          <div id="clusterResults" class="mt-4" style="display: none">
+            <h3 class="mb-3">聚类结果</h3>
+            <div id="clusterContent"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -319,53 +405,208 @@
         }
       }
 
+      function renderPaperCard(paper, source) {
+        const isLocal = source === "local";
+        return `
+          <div class="paper-card">
+            <h4>${paper.title || paper.paper_title || "无标题"}</h4>
+            ${
+              isLocal
+                ? `
+              <p class="text-muted">
+                <i class="fas fa-tag me-2"></i>${paper.entity_type}: ${paper.entity_name}
+              </p>
+            `
+                : `
+              <p class="text-muted">
+                <i class="fas fa-link me-2"></i><a href="${paper.pdf_url}" target="_blank">arXiv链接</a>
+              </p>
+              <p class="text-muted">
+                <small>${paper.abstract}</small>
+              </p>
+            `
+            }
+            <div class="d-flex gap-2">
+              ${
+                isLocal
+                  ? `
+                <button onclick="analyzeSentiment(${paper.paper_id})" class="btn btn-analyze btn-sm">
+                  <i class="fas fa-chart-line me-2"></i>情感分析
+                </button>
+              `
+                  : ""
+              }
+            </div>
+            ${
+              isLocal
+                ? `<div id="sentiment-${paper.paper_id}" class="mt-3" style="display: none;"></div>`
+                : ""
+            }
+          </div>
+        `;
+      }
+
+      function renderClusterResults(clusters) {
+        let html = "";
+        clusters.forEach((cluster, index) => {
+          html += `
+            <div class="cluster-group mb-4">
+              <h4>聚类 ${index + 1}</h4>
+              <div class="cluster-papers">
+                ${cluster.papers
+                  .map(
+                    (paper) => `
+                  <div class="paper-item">
+                    <h5>${paper.title}</h5>
+                    <p class="text-muted small">${paper.abstract}</p>
+                  </div>
+                `
+                  )
+                  .join("")}
+              </div>
+              <div class="cluster-keywords mt-2">
+                <strong>关键词：</strong> ${cluster.keywords.join(", ")}
+              </div>
+            </div>
+          `;
+        });
+        return html;
+      }
+
       $(document).ready(function () {
+        // 处理聚类选项的启用/禁用
+        $("#clusterCheckbox").on("change", function () {
+          $("#clusterNumber").prop("disabled", !this.checked);
+        });
+
+        // 重置按钮处理
+        $('button[type="reset"]').on("click", function () {
+          setTimeout(() => {
+            $("#clusterNumber").prop("disabled", true);
+            $(".results-container").hide();
+            // 重置搜索类型相关的字段显示
+            const searchType = $('select[name="search_type"]').val();
+            updateFieldsVisibility(searchType);
+          }, 0);
+        });
+
+        // 更新结果计数和显示
+        function updateResultCounts(data) {
+          $("#localCount").text(data.local_results.length);
+          $("#arxivCount").text(data.arxiv_results.length);
+
+          // 根据搜索类型显示/隐藏结果区域
+          const searchType = $('select[name="search_type"]').val();
+          if (searchType === "local") {
+            $(".arxiv-results").hide();
+          } else if (searchType === "arxiv") {
+            $(".local-results").hide();
+          } else {
+            $(".local-results, .arxiv-results").show();
+          }
+        }
+
+        // 更新字段显示/隐藏和必填状态
+        function updateFieldsVisibility(searchType) {
+          const localFields = $(".local-field");
+          const arxivFields = $(".arxiv-field");
+          const nameInput = $('.form-control[name="name"]');
+          const queryInput = $('.form-control[name="query"]');
+
+          if (searchType === "local") {
+            localFields.show();
+            arxivFields.hide();
+            nameInput.prop("required", true);
+            queryInput.prop("required", false);
+          } else if (searchType === "arxiv") {
+            localFields.hide();
+            arxivFields.show();
+            nameInput.prop("required", false);
+            queryInput.prop("required", true);
+          } else {
+            localFields.show();
+            arxivFields.show();
+            nameInput.prop("required", true);
+            queryInput.prop("required", false);
+          }
+        }
+
+        // 监听搜索类型变化
+        $('select[name="search_type"]').on("change", function () {
+          const searchType = $(this).val();
+          updateFieldsVisibility(searchType);
+        });
+
+        // 初始化字段显示状态
+        updateFieldsVisibility($('select[name="search_type"]').val());
+
         $("#searchForm").on("submit", function (e) {
           e.preventDefault();
           const formData = new FormData(this);
           const searchParams = new URLSearchParams();
+
+          // 处理checkbox
+          if (!formData.get("cluster")) {
+            searchParams.append("cluster", "false");
+          }
+
+          // 验证必填字段
+          const searchType = formData.get("search_type");
+          if (searchType === "local" || searchType === "all") {
+            if (!formData.get("name")) {
+              alert("请输入实体名称");
+              return;
+            }
+          }
+          if (searchType === "arxiv" && !formData.get("query")) {
+            alert("请输入arXiv搜索关键词");
+            return;
+          }
+
+          // 构建搜索参数
           for (const pair of formData.entries()) {
-            searchParams.append(pair[0], pair[1]);
+            if (pair[1]) {
+              searchParams.append(pair[0], pair[1]);
+            }
           }
 
           showLoading();
           $(".results-container").hide();
 
-          fetch(`/search?${searchParams.toString()}`)
+          fetch(`/unified_search?${searchParams.toString()}`)
             .then((response) => response.json())
             .then((data) => {
               if (data.status === "success") {
-                const resultsHtml = data.results
-                  .map(
-                    (result) => `
-                  <div class="paper-card">
-                    <h4>${result.paper_title || "无标题"}</h4>
-                    <p class="text-muted">
-                      <i class="fas fa-tag me-2"></i>${result.entity_type}: ${
-                      result.entity_name
-                    }
-                    </p>
-                    <div class="d-flex gap-2">
-                      <button onclick="analyzeSentiment(${
-                        result.paper_id
-                      })" class="btn btn-analyze btn-sm">
-                        <i class="fas fa-chart-line me-2"></i>Sentiment Analysis
-                      </button>
-                    </div>
-                    <div id="sentiment-${
-                      result.paper_id
-                    }" class="mt-3" style="display: none;"></div>
-                  </div>
-                `
-                  )
-                  .join("");
+                const localHtml = data.local_results.length
+                  ? data.local_results
+                      .map((result) => renderPaperCard(result, "local"))
+                      .join("")
+                  : '<div class="alert alert-info">没有找到本地论文</div>';
+                $("#localResults").html(localHtml);
 
-                $("#searchResults").html(resultsHtml);
+                const arxivHtml = data.arxiv_results.length
+                  ? data.arxiv_results
+                      .map((result) => renderPaperCard(result, "arxiv"))
+                      .join("")
+                  : '<div class="alert alert-info">没有找到arXiv论文</div>';
+                $("#arxivResults").html(arxivHtml);
+
+                updateResultCounts(data);
+
+                if (data.clusters && data.clusters.clusters) {
+                  $("#clusterResults").show();
+                  $("#clusterContent").html(
+                    renderClusterResults(data.clusters.clusters)
+                  );
+                } else {
+                  $("#clusterResults").hide();
+                }
+
                 $(".results-container").show();
               } else {
                 $("#searchResults").html(`
                   <div class="alert alert-danger">
-                    搜索失败: ${data.message}
+                    <i class="fas fa-exclamation-circle me-2"></i>搜索失败: ${data.message}
                   </div>
                 `);
                 $(".results-container").show();
@@ -374,7 +615,7 @@
             .catch((error) => {
               $("#searchResults").html(`
                 <div class="alert alert-danger">
-                  搜索出错: ${error.message}
+                  <i class="fas fa-exclamation-circle me-2"></i>搜索出错: ${error.message}
                 </div>
               `);
               $(".results-container").show();

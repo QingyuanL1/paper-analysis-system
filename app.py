@@ -379,6 +379,155 @@ def get_arxiv_paper(arxiv_id):
 def arxiv_page():
     return render_template('arxiv.html')
 
+@app.route('/unified_search', methods=['GET'])
+def unified_search():
+    try:
+        # 获取通用搜索参数
+        search_type = request.args.get('search_type', 'all')  # 可选值: local, arxiv, all
+        query = request.args.get('query', '')
+        start = int(request.args.get('start', 0))
+        max_results = int(request.args.get('max_results', 10))
+        should_cluster = request.args.get('cluster', 'false').lower() == 'true'
+        n_clusters = int(request.args.get('n_clusters', 5))
+        
+        # 本地搜索特定参数
+        entity_type = request.args.get('type', '').lower()
+        entity_name = request.args.get('name', '')
+        limit = request.args.get('limit', 'all')
+        
+        results = {
+            'status': 'success',
+            'local_results': [],
+            'arxiv_results': [],
+            'clusters': None
+        }
+        
+        # 执行本地搜索
+        if search_type in ['local', 'all'] and entity_type and entity_name:
+            try:
+                query_string = f"get {limit} papers that mention {entity_type} {entity_name}"
+                conn = get_connection("data/test_db.sqlite")
+                cur = conn.cursor()
+                
+                sql_query = build_query(query_string)
+                cur.execute(sql_query)
+                local_results = cur.fetchall()
+                
+                formatted_local_results = []
+                for result in local_results:
+                    formatted_local_results.append({
+                        'source': 'local',
+                        'paper_id': result[0],
+                        'title': result[1],
+                        'pdf_path': result[2],
+                        'docx_path': result[3],
+                        'json_path': result[4],
+                        'entities': result[5],
+                        'entity_name': result[9],
+                        'entity_type': result[10]
+                    })
+                results['local_results'] = formatted_local_results
+
+                # 如果是本地搜索，也用实体名称搜索arXiv
+                if not query and entity_name:
+                    arxiv_query = entity_name
+                    arxiv_papers = arxiv_client.search_papers(arxiv_query, start, max_results)
+                    if isinstance(arxiv_papers, dict) and 'error' in arxiv_papers:
+                        results['arxiv_error'] = arxiv_papers['error']
+                    else:
+                        # 保存到数据库
+                        try:
+                            arxiv_client.save_papers_to_db(arxiv_papers, conn)
+                        except Exception as e:
+                            logger.error(f"Error saving arXiv papers to database: {str(e)}")
+                        
+                        formatted_arxiv_results = [{
+                            'source': 'arxiv',
+                            **paper
+                        } for paper in arxiv_papers]
+                        results['arxiv_results'] = formatted_arxiv_results
+
+            except Exception as e:
+                logger.error(f"Error in local search: {str(e)}")
+                results['local_error'] = str(e)
+            finally:
+                if 'conn' in locals():
+                    conn.close()
+        
+        # 执行arXiv搜索（如果有额外的arXiv查询关键词）
+        if search_type in ['arxiv', 'all'] and query:
+            try:
+                arxiv_papers = arxiv_client.search_papers(query, start, max_results)
+                if isinstance(arxiv_papers, dict) and 'error' in arxiv_papers:
+                    results['arxiv_error'] = arxiv_papers['error']
+                else:
+                    # 保存到数据库
+                    conn = get_connection("data/test_db.sqlite")
+                    try:
+                        arxiv_client.save_papers_to_db(arxiv_papers, conn)
+                    except Exception as e:
+                        logger.error(f"Error saving arXiv papers to database: {str(e)}")
+                    finally:
+                        conn.close()
+                    
+                    # 合并到现有的arXiv结果中
+                    existing_ids = set(paper['arxiv_id'] for paper in results['arxiv_results'])
+                    for paper in arxiv_papers:
+                        if paper['arxiv_id'] not in existing_ids:
+                            results['arxiv_results'].append({
+                                'source': 'arxiv',
+                                **paper
+                            })
+                            existing_ids.add(paper['arxiv_id'])
+            except Exception as e:
+                logger.error(f"Error in arXiv search: {str(e)}")
+                results['arxiv_error'] = str(e)
+        
+        # 如果需要聚类，将所有结果合并后进行聚类
+        if should_cluster:
+            all_papers = []
+            
+            # 添加本地论文
+            for paper in results['local_results']:
+                try:
+                    with open(paper['json_path'], 'r', encoding='utf-8') as f:
+                        paper_json = json.load(f)
+                    abstract = ""
+                    for item in paper_json:
+                        if isinstance(item, dict) and item.get('TYPE') == 'text':
+                            abstract += item.get('VALUE', '') + " "
+                    all_papers.append({
+                        'paper_id': str(paper['paper_id']),
+                        'title': paper['title'],
+                        'abstract': abstract.strip()
+                    })
+                except Exception as e:
+                    logger.warning(f"Error processing local paper {paper['paper_id']}: {str(e)}")
+                    continue
+            
+            # 添加arXiv论文
+            for paper in results['arxiv_results']:
+                all_papers.append({
+                    'paper_id': paper['arxiv_id'],
+                    'title': paper['title'],
+                    'abstract': paper['abstract']
+                })
+            
+            if all_papers:
+                paper_clusterer.n_clusters = min(n_clusters, len(all_papers))
+                clustering_results = paper_clusterer.process_papers(all_papers)
+                if 'error' not in clustering_results:
+                    results['clusters'] = clustering_results
+        
+        return jsonify(results)
+        
+    except Exception as e:
+        logger.error(f"Error in unified search: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 if __name__ == '__main__':
     logger.info("Starting Flask application...")
     app.run(host='0.0.0.0', port=5002, debug=True) 
