@@ -7,18 +7,3 @@
 
 # 2025-02-01 12:48:42.336694
 +get all papers that mention organisation Google
-
-# 2025-02-10 12:58:01.368821
-+get all papers
-
-# 2025-02-10 12:58:25.421049
-+category
-
-# 2025-02-10 12:58:46.799971
-+get all papers that mention person John
-
-# 2025-02-10 12:59:56.555013
-+category
-
-# 2025-02-10 12:59:59.664796
-+get all papers
