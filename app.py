@@ -7,6 +7,9 @@ from paper_clustering import PaperClusterer
 from arxiv_client import ArxivClient
 import sqlite3
 import json
+from collections import Counter
+from datetime import datetime
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -402,13 +405,13 @@ def unified_search():
             'clusters': None
         }
         
+        conn = get_connection("data/test_db.sqlite")
+        cur = conn.cursor()
+        
         # 执行本地搜索
         if search_type in ['local', 'all'] and entity_type and entity_name:
             try:
                 query_string = f"get {limit} papers that mention {entity_type} {entity_name}"
-                conn = get_connection("data/test_db.sqlite")
-                cur = conn.cursor()
-                
                 sql_query = build_query(query_string)
                 cur.execute(sql_query)
                 local_results = cur.fetchall()
@@ -435,11 +438,89 @@ def unified_search():
                     if isinstance(arxiv_papers, dict) and 'error' in arxiv_papers:
                         results['arxiv_error'] = arxiv_papers['error']
                     else:
-                        # 保存到数据库
+                        # 保存到arxiv_papers表
                         try:
                             arxiv_client.save_papers_to_db(arxiv_papers, conn)
+                            
+                            # 保存到papers表
+                            for paper in arxiv_papers:
+                                try:
+                                    logger.info(f"Processing arXiv paper: {paper['title']}")
+                                    # 检查论文是否已存在
+                                    cur.execute("SELECT paper_id FROM papers WHERE paper_name = ?", (paper['title'],))
+                                    existing_paper = cur.fetchone()
+                                    
+                                    if existing_paper:
+                                        logger.info(f"Paper already exists in database with ID: {existing_paper[0]}")
+                                        continue
+                                        
+                                    logger.info("Paper is new, inserting into papers table...")
+                                    # 插入新论文
+                                    cur.execute("""
+                                        INSERT INTO papers (paper_name, paper_pdf, paper_docx, paper_json, paper_entities)
+                                        VALUES (?, ?, ?, ?, ?)
+                                    """, (
+                                        paper['title'],
+                                        paper['pdf_url'],
+                                        '',  # docx_path为空
+                                        json.dumps(paper),  # 将整个paper对象作为json存储
+                                        json.dumps({'arxiv_id': paper['arxiv_id']})  # 存储arxiv_id作为标识
+                                    ))
+                                    paper_id = cur.lastrowid
+                                    logger.info(f"Successfully inserted paper with ID: {paper_id}")
+                                    
+                                    # 为作者添加实体
+                                    logger.info(f"Processing {len(paper['authors'])} authors...")
+                                    for author in paper['authors']:
+                                        # 插入作者实体
+                                        cur.execute("""
+                                            INSERT OR IGNORE INTO entities (entity_name, entity_type)
+                                            VALUES (?, 'person')
+                                        """, (author,))
+                                        
+                                        # 获取实体ID
+                                        cur.execute("SELECT entity_id FROM entities WHERE entity_name = ? AND entity_type = 'person'", (author,))
+                                        entity_id = cur.fetchone()[0]
+                                        
+                                        # 建立论文和实体的关联
+                                        cur.execute("""
+                                            INSERT OR IGNORE INTO papers_have_entities (paper_id, entity_id)
+                                            VALUES (?, ?)
+                                        """, (paper_id, entity_id))
+                                        logger.info(f"Added author entity: {author} (ID: {entity_id})")
+                                    
+                                    # 为分类添加实体
+                                    logger.info(f"Processing {len(paper['categories'])} categories...")
+                                    for category in paper['categories']:
+                                        # 插入分类实体
+                                        cur.execute("""
+                                            INSERT OR IGNORE INTO entities (entity_name, entity_type)
+                                            VALUES (?, 'work')
+                                        """, (category,))
+                                        
+                                        # 获取实体ID
+                                        cur.execute("SELECT entity_id FROM entities WHERE entity_name = ? AND entity_type = 'work'", (category,))
+                                        entity_id = cur.fetchone()[0]
+                                        
+                                        # 建立论文和实体的关联
+                                        cur.execute("""
+                                            INSERT OR IGNORE INTO papers_have_entities (paper_id, entity_id)
+                                            VALUES (?, ?)
+                                        """, (paper_id, entity_id))
+                                        logger.info(f"Added category entity: {category} (ID: {entity_id})")
+                                    
+                                    logger.info(f"Successfully processed paper: {paper['title']}")
+                                    
+                                except Exception as e:
+                                    logger.error(f"Error saving paper '{paper['title']}' to papers table: {str(e)}")
+                                    continue
+                                    
+                            conn.commit()
+                            logger.info("Successfully committed all changes to database")
                         except Exception as e:
-                            logger.error(f"Error saving arXiv papers to database: {str(e)}")
+                            logger.error(f"Error saving papers to database: {str(e)}")
+                            conn.rollback()
+                            logger.info("Rolling back database changes due to error")
                         
                         formatted_arxiv_results = [{
                             'source': 'arxiv',
@@ -450,9 +531,6 @@ def unified_search():
             except Exception as e:
                 logger.error(f"Error in local search: {str(e)}")
                 results['local_error'] = str(e)
-            finally:
-                if 'conn' in locals():
-                    conn.close()
         
         # 执行arXiv搜索（如果有额外的arXiv查询关键词）
         if search_type in ['arxiv', 'all'] and query:
@@ -461,14 +539,89 @@ def unified_search():
                 if isinstance(arxiv_papers, dict) and 'error' in arxiv_papers:
                     results['arxiv_error'] = arxiv_papers['error']
                 else:
-                    # 保存到数据库
-                    conn = get_connection("data/test_db.sqlite")
+                    # 保存到arxiv_papers表和papers表
                     try:
                         arxiv_client.save_papers_to_db(arxiv_papers, conn)
+                        
+                        # 保存到papers表
+                        for paper in arxiv_papers:
+                            try:
+                                logger.info(f"Processing arXiv paper: {paper['title']}")
+                                # 检查论文是否已存在
+                                cur.execute("SELECT paper_id FROM papers WHERE paper_name = ?", (paper['title'],))
+                                existing_paper = cur.fetchone()
+                                
+                                if existing_paper:
+                                    logger.info(f"Paper already exists in database with ID: {existing_paper[0]}")
+                                    continue
+                                    
+                                logger.info("Paper is new, inserting into papers table...")
+                                # 插入新论文
+                                cur.execute("""
+                                    INSERT INTO papers (paper_name, paper_pdf, paper_docx, paper_json, paper_entities)
+                                    VALUES (?, ?, ?, ?, ?)
+                                """, (
+                                    paper['title'],
+                                    paper['pdf_url'],
+                                    '',  # docx_path为空
+                                    json.dumps(paper),  # 将整个paper对象作为json存储
+                                    json.dumps({'arxiv_id': paper['arxiv_id']})  # 存储arxiv_id作为标识
+                                ))
+                                paper_id = cur.lastrowid
+                                logger.info(f"Successfully inserted paper with ID: {paper_id}")
+                                
+                                # 为作者添加实体
+                                logger.info(f"Processing {len(paper['authors'])} authors...")
+                                for author in paper['authors']:
+                                    # 插入作者实体
+                                    cur.execute("""
+                                        INSERT OR IGNORE INTO entities (entity_name, entity_type)
+                                        VALUES (?, 'person')
+                                    """, (author,))
+                                    
+                                    # 获取实体ID
+                                    cur.execute("SELECT entity_id FROM entities WHERE entity_name = ? AND entity_type = 'person'", (author,))
+                                    entity_id = cur.fetchone()[0]
+                                    
+                                    # 建立论文和实体的关联
+                                    cur.execute("""
+                                        INSERT OR IGNORE INTO papers_have_entities (paper_id, entity_id)
+                                        VALUES (?, ?)
+                                    """, (paper_id, entity_id))
+                                    logger.info(f"Added author entity: {author} (ID: {entity_id})")
+                                
+                                # 为分类添加实体
+                                logger.info(f"Processing {len(paper['categories'])} categories...")
+                                for category in paper['categories']:
+                                    # 插入分类实体
+                                    cur.execute("""
+                                        INSERT OR IGNORE INTO entities (entity_name, entity_type)
+                                        VALUES (?, 'work')
+                                    """, (category,))
+                                    
+                                    # 获取实体ID
+                                    cur.execute("SELECT entity_id FROM entities WHERE entity_name = ? AND entity_type = 'work'", (category,))
+                                    entity_id = cur.fetchone()[0]
+                                    
+                                    # 建立论文和实体的关联
+                                    cur.execute("""
+                                        INSERT OR IGNORE INTO papers_have_entities (paper_id, entity_id)
+                                        VALUES (?, ?)
+                                    """, (paper_id, entity_id))
+                                    logger.info(f"Added category entity: {category} (ID: {entity_id})")
+                                
+                                logger.info(f"Successfully processed paper: {paper['title']}")
+                                
+                            except Exception as e:
+                                logger.error(f"Error saving paper '{paper['title']}' to papers table: {str(e)}")
+                                continue
+                                
+                        conn.commit()
+                        logger.info("Successfully committed all changes to database")
                     except Exception as e:
-                        logger.error(f"Error saving arXiv papers to database: {str(e)}")
-                    finally:
-                        conn.close()
+                        logger.error(f"Error saving papers to database: {str(e)}")
+                        conn.rollback()
+                        logger.info("Rolling back database changes due to error")
                     
                     # 合并到现有的arXiv结果中
                     existing_ids = set(paper['arxiv_id'] for paper in results['arxiv_results'])
@@ -527,6 +680,120 @@ def unified_search():
             'status': 'error',
             'message': str(e)
         }), 500
+    finally:
+        if 'conn' in locals():
+            conn.close()
+
+def load_arxiv_metadata(file_path, limit=None):
+    """加载arXiv元数据文件"""
+    papers = []
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for i, line in enumerate(f):
+                if limit and i >= limit:
+                    break
+                try:
+                    paper = json.loads(line.strip())
+                    papers.append(paper)
+                except json.JSONDecodeError:
+                    continue
+        return papers
+    except Exception as e:
+        logger.error(f"Error loading arXiv metadata: {str(e)}")
+        return None
+
+@app.route('/arxiv/metadata/analysis', methods=['GET'])
+def analyze_arxiv_metadata():
+    try:
+        # 获取查询参数
+        limit = request.args.get('limit', type=int)
+        analysis_type = request.args.get('type', 'all')  # categories, authors, time, all
+        
+        # 加载数据
+        file_path = os.path.join(os.path.dirname(__file__), 'arxiv', 'arxiv-metadata-oai-snapshot.json')
+        papers = load_arxiv_metadata(file_path, limit)
+        
+        if not papers:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to load arXiv metadata'
+            }), 500
+            
+        results = {}
+        
+        # 分类统计
+        if analysis_type in ['categories', 'all']:
+            category_counter = Counter()
+            for paper in papers:
+                categories = paper.get('categories', '').split()
+                category_counter.update(categories)
+            
+            results['category_analysis'] = {
+                'total_categories': len(category_counter),
+                'category_distribution': dict(category_counter.most_common(20))
+            }
+        
+        # 作者统计
+        if analysis_type in ['authors', 'all']:
+            author_counter = Counter()
+            for paper in papers:
+                authors_parsed = paper.get('authors_parsed', [])
+                for author in authors_parsed:
+                    if author and len(author) >= 2:
+                        author_name = f"{author[0]}, {author[1]}"
+                        author_counter[author_name] += 1
+            
+            results['author_analysis'] = {
+                'total_authors': len(author_counter),
+                'top_authors': dict(author_counter.most_common(20))
+            }
+        
+        # 时间趋势分析
+        if analysis_type in ['time', 'all']:
+            time_counter = Counter()
+            version_counter = Counter()
+            
+            for paper in papers:
+                update_date = paper.get('update_date', '')
+                if update_date:
+                    try:
+                        year = datetime.strptime(update_date, '%Y-%m-%d').year
+                        time_counter[year] += 1
+                    except ValueError:
+                        continue
+                
+                versions = paper.get('versions', [])
+                version_counter[len(versions)] += 1
+            
+            results['time_analysis'] = {
+                'yearly_distribution': dict(sorted(time_counter.items())),
+                'version_distribution': dict(sorted(version_counter.items()))
+            }
+        
+        # 基本统计
+        if analysis_type == 'all':
+            results['basic_stats'] = {
+                'total_papers': len(papers),
+                'papers_with_doi': sum(1 for p in papers if p.get('doi')),
+                'papers_with_license': sum(1 for p in papers if p.get('license')),
+                'papers_with_journal_ref': sum(1 for p in papers if p.get('journal-ref'))
+            }
+        
+        return jsonify({
+            'status': 'success',
+            'analysis_results': results
+        })
+        
+    except Exception as e:
+        logger.error(f"Error analyzing arXiv metadata: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/arxiv/analysis')
+def arxiv_analysis_page():
+    return render_template('arxiv_analysis.html')
 
 if __name__ == '__main__':
     logger.info("Starting Flask application...")
