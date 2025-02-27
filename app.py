@@ -10,8 +10,22 @@ import json
 from collections import Counter
 from datetime import datetime
 import os
+from flask_swagger_ui import get_swaggerui_blueprint
+
+# Configure Swagger UI
+SWAGGER_URL = '/api/docs'  # URL for accessing Swagger UI
+API_URL = '/static/swagger.yaml'  # URL for swagger.yaml file
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "Paper Analysis System API"
+    }
+)
 
 app = Flask(__name__)
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

@@ -1,0 +1,321 @@
+openapi: 3.0.0
+info:
+  title: 论文分析系统 API
+  description: 提供论文搜索、分析和聚类功能的API接口
+  version: 1.0.0
+  contact:
+    email: support@example.com
+
+servers:
+  - url: http://localhost:5000
+    description: 本地开发服务器
+
+paths:
+  /search:
+    get:
+      summary: 本地论文搜索
+      description: 搜索本地数据库中的论文
+      parameters:
+        - name: type
+          in: query
+          description: 实体类型
+          required: true
+          schema:
+            type: string
+            enum: [person, organisation, work]
+        - name: name
+          in: query
+          description: 实体名称
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: 结果数量限制
+          required: false
+          schema:
+            type: string
+            enum: [all, one]
+      responses:
+        '200':
+          description: 搜索成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  papers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Paper'
+        '400':
+          description: 请求参数错误
+        '500':
+          description: 服务器错误
+
+  /arxiv/search:
+    get:
+      summary: arXiv论文搜索
+      description: 搜索arXiv论文库
+      parameters:
+        - name: query
+          in: query
+          description: 搜索关键词
+          required: true
+          schema:
+            type: string
+        - name: max_results
+          in: query
+          description: 最大结果数
+          required: false
+          schema:
+            type: integer
+            default: 10
+        - name: cluster
+          in: query
+          description: 是否进行聚类
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: n_clusters
+          in: query
+          description: 聚类数量
+          required: false
+          schema:
+            type: integer
+            default: 5
+      responses:
+        '200':
+          description: 搜索成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  papers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ArxivPaper'
+                  clusters:
+                    $ref: '#/components/schemas/Clusters'
+        '400':
+          description: 请求参数错误
+        '500':
+          description: 服务器错误
+
+  /analyze/sentiment:
+    post:
+      summary: 论文情感分析
+      description: 分析论文文本的情感倾向
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paper_id:
+                  type: integer
+                text:
+                  type: string
+      responses:
+        '200':
+          description: 分析成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentimentResult'
+        '400':
+          description: 请求参数错误
+        '500':
+          description: 服务器错误
+
+  /papers/{paper_id}/sentiment:
+    get:
+      summary: 获取论文情感分析结果
+      description: 获取指定论文的情感分析结果
+      parameters:
+        - name: paper_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SentimentResult'
+        '404':
+          description: 论文不存在
+        '500':
+          description: 服务器错误
+
+  /arxiv/metadata/analysis:
+    get:
+      summary: arXiv元数据分析
+      description: 分析arXiv论文元数据
+      parameters:
+        - name: limit
+          in: query
+          description: 分析数据量
+          required: false
+          schema:
+            type: integer
+            default: 1000
+      responses:
+        '200':
+          description: 分析成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetadataAnalysis'
+        '500':
+          description: 服务器错误
+
+components:
+  schemas:
+    Paper:
+      type: object
+      properties:
+        paper_id:
+          type: integer
+        title:
+          type: string
+        abstract:
+          type: string
+        entity_type:
+          type: string
+        entity_name:
+          type: string
+
+    ArxivPaper:
+      type: object
+      properties:
+        arxiv_id:
+          type: string
+        title:
+          type: string
+        abstract:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        categories:
+          type: array
+          items:
+            type: string
+        published:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+        pdf_url:
+          type: string
+
+    Clusters:
+      type: object
+      properties:
+        clusters:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              properties:
+                paper_id:
+                  type: string
+                title:
+                  type: string
+                x:
+                  type: number
+                y:
+                  type: number
+        cluster_terms:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    SentimentResult:
+      type: object
+      properties:
+        status:
+          type: string
+        results:
+          type: object
+          properties:
+            overall_sentiment:
+              type: object
+              properties:
+                polarity:
+                  type: number
+                subjectivity:
+                  type: number
+            sentiment_label:
+              type: string
+            sentence_sentiments:
+              type: array
+              items:
+                type: object
+                properties:
+                  text:
+                    type: string
+                  polarity:
+                    type: number
+                  subjectivity:
+                    type: number
+
+    MetadataAnalysis:
+      type: object
+      properties:
+        status:
+          type: string
+        analysis_results:
+          type: object
+          properties:
+            basic_stats:
+              type: object
+              properties:
+                total_papers:
+                  type: integer
+                papers_with_doi:
+                  type: integer
+                papers_with_license:
+                  type: integer
+                papers_with_journal_ref:
+                  type: integer
+            category_analysis:
+              type: object
+              properties:
+                category_distribution:
+                  type: object
+                  additionalProperties:
+                    type: integer
+            time_analysis:
+              type: object
+              properties:
+                yearly_distribution:
+                  type: object
+                  additionalProperties:
+                    type: integer
+                version_distribution:
+                  type: object
+                  additionalProperties:
+                    type: integer
+            author_analysis:
+              type: object
+              properties:
+                top_authors:
+                  type: object
+                  additionalProperties:
+                    type: integer 

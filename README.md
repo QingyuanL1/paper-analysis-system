@@ -1,92 +1,133 @@
-# Academic Paper Analysis System
+# Paper Analysis System
 
-A comprehensive system for analyzing academic papers, featuring arXiv integration, paper clustering, and sentiment analysis.
+## Overview
 
-## Features
+The Paper Analysis System is an integrated academic paper search and analysis platform that provides the following features:
 
-### 1. Paper Search and Management
-- Local paper search with entity recognition
+- Local paper search and analysis
 - Real-time arXiv paper search
-- Automatic paper metadata extraction
-- PDF download support
+- Paper sentiment analysis
+- Paper clustering analysis
+- arXiv metadata statistical analysis
 
-### 2. Paper Clustering
-- Topic-based paper clustering
-- Interactive visualization of paper clusters
-- Keyword extraction for each cluster
-- Customizable number of clusters
+## System Requirements
 
-### 3. Content Analysis
-- Sentiment analysis of paper content
-- Entity recognition and extraction
-- Detailed paper statistics
-- Full-text search capabilities
-
-## Technology Stack
-
-- Backend: Python, Flask
-- Frontend: HTML5, Bootstrap, ECharts
-- Data Processing: scikit-learn, NLTK
-- Database: SQLite
+- Python 3.7+
+- SQLite3
+- Required Python packages (see requirements.txt)
 
 ## Installation
 
-1. Clone the repository:
+1. Navigate to the project repository:
 ```bash
-git clone [repository-url]
 cd paper-analysis-system
 ```
 
-2. Create and activate virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Run the application:
+3. Start the application:
 ```bash
 python app.py
 ```
 
-The application will be available at `http://127.0.0.1:5002`
+## Main Features
 
-## Usage
+### 1. Unified Search Interface (/)
 
-### Local Paper Analysis
-1. Navigate to "Local Papers"
-2. Select entity type and enter keywords
-3. View search results and analyze paper content
+- Support simultaneous search in local database and arXiv
+- Search by entity type (person, organization, work)
+- Support result clustering analysis
+- Provide sentiment analysis functionality
 
-### arXiv Paper Search
-1. Navigate to "arXiv Papers"
-2. Enter search keywords
-3. Configure clustering options if needed
-4. View papers and cluster visualization
+### 2. arXiv Paper Search (/arxiv)
 
-## API Endpoints
+- Real-time arXiv paper library search
+- Keyword search support
+- Clustering analysis
+- Detailed paper information view
 
-### Paper Search
-- `GET /search` - Search local papers
-- `GET /arxiv/search` - Search arXiv papers
-- `GET /arxiv/paper/<arxiv_id>` - Get specific paper details
+### 3. arXiv Data Analysis (/arxiv/analysis)
 
-### Analysis
-- `GET /papers/clusters` - Get paper clustering results
-- `POST /analyze/sentiment` - Analyze paper sentiment
+- Paper category distribution statistics
+- Publication time trend analysis
+- Version distribution analysis
+- Active author statistics
 
-## Contributing
+## API Documentation
 
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a new Pull Request
+### Local Search API
+
+- GET `/search`
+  - Parameters:
+    - type: Entity type (person/organisation/work)
+    - name: Entity name
+    - limit: Result limit
+
+### arXiv Search API
+
+- GET `/arxiv/search`
+  - Parameters:
+    - query: Search keywords
+    - max_results: Maximum number of results
+    - cluster: Whether to perform clustering
+    - n_clusters: Number of clusters
+
+### Sentiment Analysis API
+
+- POST `/analyze/sentiment`
+  - Parameters:
+    - paper_id: Paper ID
+    - text: Text to analyze
+
+### Metadata Analysis API
+
+- GET `/arxiv/metadata/analysis`
+  - Parameters:
+    - limit: Amount of data to analyze
+
+## Usage Examples
+
+### 1. Unified Search
+
+1. Visit homepage "/"
+2. Select search scope (All/Local/arXiv)
+3. Enter search criteria
+4. Optionally enable clustering
+5. Click search button
+
+### 2. Paper Sentiment Analysis
+
+1. Select a paper from search results
+2. Click "Sentiment Analysis" button
+3. View analysis results, including:
+   - Overall sentiment
+   - Polarity value
+   - Subjectivity degree
+   - Sentence-level analysis
+
+### 3. arXiv Data Analysis
+
+1. Visit "/arxiv/analysis"
+2. Set analysis data amount
+3. View various statistical charts:
+   - Paper category distribution
+   - Time trends
+   - Version distribution
+   - Author statistics
+
+## Important Notes
+
+1. arXiv API Limitations:
+   - Maximum 3 requests per second
+   - Recommended to use smaller max_results values
+
+2. Clustering Analysis:
+   - Recommended cluster count between 2-10
+   - May require longer processing time for large datasets
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License
