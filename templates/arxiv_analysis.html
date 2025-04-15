@@ -3,123 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>arXiv Paper Analysis</title>
-    <link
+    <title>arXiv Paper Analysis - Academic Paper Analysis System</title>
+    <!-- Remove Bootstrap CSS -->
+    <!-- <link
       href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css"
       rel="stylesheet"
-    />
+    /> -->
+    <!-- Add Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Keep FontAwesome -->
     <link
-      href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
       rel="stylesheet"
     />
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- Use Cloudflare CDN for ECharts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <style>
+      /* Minimal custom styles if needed, prefer Tailwind classes */
       body {
-        background-color: #f8f9fa;
-        font-family: "Microsoft YaHei", sans-serif;
+        font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
-      .navbar {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        padding: 1rem 0;
-        margin-bottom: 0;
-      }
-      .navbar-brand,
-      .nav-link {
-        color: white !important;
-      }
-      .nav-link:hover {
-        color: rgba(255, 255, 255, 0.8) !important;
-      }
-      .header {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        color: white;
-        padding: 2rem 0;
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .chart-container {
-        background-color: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        margin-bottom: 2rem;
-        padding: 1.5rem;
-      }
+      /* Ensure charts have a defined height */
       .chart {
         height: 400px;
         width: 100%;
       }
-      .controls {
-        background-color: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        margin-bottom: 2rem;
-        padding: 1.5rem;
-      }
-      .basic-stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-      }
-      .stat-card {
-        background-color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        text-align: center;
-        transition: transform 0.2s;
-      }
-      .stat-card:hover {
-        transform: translateY(-5px);
-      }
-      .stat-value {
-        font-size: 1.8rem;
-        font-weight: bold;
-        color: #2a5298;
-      }
-      .stat-label {
-        color: #666;
-        margin-top: 0.5rem;
-        font-size: 0.9rem;
-      }
-      .btn-primary {
-        background-color: #2a5298;
-        border-color: #2a5298;
-      }
-      .btn-primary:hover {
-        background-color: #1e3c72;
-        border-color: #1e3c72;
-      }
-      input[type="number"] {
-        border: 1px solid #dee2e6;
-        border-radius: 5px;
-        padding: 0.5rem;
-        margin-right: 1rem;
-      }
+      /* Additional styles for specific elements if Tailwind isn't enough */
     </style>
+    <script>
+      // Optional: Configure Tailwind if needed
+      // tailwind.config = {
+      //   theme: {
+      //     extend: {
+      //       colors: {
+      //         primary: '#005AA7',
+      //       }
+      //     }
+      //   }
+      // }
+    </script>
   </head>
-  <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg">
-      <div class="container">
-        <a class="navbar-brand" href="/">
-          <i class="fas fa-book-reader me-2"></i>Paper Analysis System
-        </a>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
+  <body class="bg-gray-100">
+    <!-- Navigation Bar (Using Tailwind) -->
+    <nav
+      class="bg-gradient-to-r from-blue-700 via-blue-100 to-yellow-50 shadow-md py-3"
+    >
+      <div class="container mx-auto px-4 flex justify-between items-center">
+        <a
+          class="text-gray-800 font-semibold text-lg hover:text-blue-800"
+          href="/"
         >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link" href="/">Local Papers</a>
+          <i class="fas fa-book-reader mr-2"></i>Paper Analysis System
+        </a>
+        <div class="hidden md:block">
+          <ul class="flex space-x-6">
+            <li>
+              <!-- Changed from Local Papers -->
+              <a class="text-gray-700 hover:text-blue-700 font-medium" href="/"
+                >arXiv Search</a
+              >
             </li>
-            <li class="nav-item">
-              <a class="nav-link active" href="/arxiv/analysis"
+            <li>
+              <!-- Kept arXiv Analysis, now active -->
+              <a class="text-blue-700 font-medium" href="/arxiv/analysis"
                 >arXiv Analysis</a
               >
             </li>
@@ -128,70 +74,103 @@
       </div>
     </nav>
 
-    <!-- Header -->
-    <div class="header">
-      <div class="container">
-        <h1><i class="fas fa-chart-line me-2"></i>arXiv Paper Analysis</h1>
-        <p class="mb-0">
+    <!-- Header (Using Tailwind) -->
+    <div
+      class="bg-gradient-to-r from-blue-700 to-blue-500 text-white py-10 mb-8 text-center"
+    >
+      <div class="container mx-auto px-4">
+        <h1 class="text-4xl font-light mb-2">
+          <i class="fas fa-chart-line mr-2"></i>arXiv Paper Analysis
+        </h1>
+        <p class="text-xl text-blue-100">
           In-depth analysis of arXiv papers, showing key statistics and trends
         </p>
       </div>
     </div>
 
-    <div class="container">
-      <div class="controls">
-        <div class="d-flex align-items-center">
-          <div class="input-group" style="max-width: 300px">
-            <span class="input-group-text">
-              <i class="fas fa-file-alt"></i>
-            </span>
-            <input
-              type="number"
-              class="form-control"
-              id="limit"
-              value="1000"
-              min="100"
-              step="100"
-              placeholder="Enter number of papers to analyze"
-            />
-          </div>
-          <button onclick="fetchData()" class="btn btn-primary ms-3">
-            <i class="fas fa-sync-alt me-2"></i>Update Analysis
-          </button>
+    <div class="container mx-auto px-4">
+      <!-- Controls (Using Tailwind) -->
+      <div
+        class="bg-white p-6 rounded-xl shadow-lg mb-8 flex items-center space-x-4"
+      >
+        <label
+          for="limit"
+          class="text-sm font-medium text-gray-700 flex items-center whitespace-nowrap"
+        >
+          <i class="fas fa-file-alt mr-2"></i>Analyze Papers:
+        </label>
+        <input
+          type="number"
+          id="limit"
+          value="1000"
+          min="100"
+          step="100"
+          placeholder="Number of papers"
+          class="block w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-1.5 px-3"
+        />
+        <button
+          onclick="fetchData()"
+          class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          <i class="fas fa-sync-alt mr-2"></i>Update Analysis
+        </button>
+      </div>
+
+      <!-- Basic Statistics (Using Tailwind Grid) -->
+      <div
+        id="basicStats"
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+      >
+        <!-- Stat cards will be generated by JS -->
+      </div>
+
+      <!-- Chart Containers (Using Tailwind) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h2
+            class="text-xl font-semibold text-gray-700 mb-4 flex items-center"
+          >
+            <i class="fas fa-chart-pie mr-2 text-blue-600"></i>Paper Category
+            Distribution
+          </h2>
+          <div id="categoryChart" class="chart"></div>
         </div>
-      </div>
 
-      <div class="basic-stats" id="basicStats">
-        <!-- Basic statistics will be displayed here -->
-      </div>
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h2
+            class="text-xl font-semibold text-gray-700 mb-4 flex items-center"
+          >
+            <i class="fas fa-chart-line mr-2 text-blue-600"></i>Publication Time
+            Trends
+          </h2>
+          <div id="timeChart" class="chart"></div>
+        </div>
 
-      <div class="chart-container">
-        <h2>
-          <i class="fas fa-chart-pie me-2"></i>Paper Category Distribution
-        </h2>
-        <div id="categoryChart" class="chart"></div>
-      </div>
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h2
+            class="text-xl font-semibold text-gray-700 mb-4 flex items-center"
+          >
+            <i class="fas fa-code-branch mr-2 text-blue-600"></i>Paper Version
+            Distribution
+          </h2>
+          <div id="versionChart" class="chart"></div>
+        </div>
 
-      <div class="chart-container">
-        <h2><i class="fas fa-chart-line me-2"></i>Publication Time Trends</h2>
-        <div id="timeChart" class="chart"></div>
-      </div>
-
-      <div class="chart-container">
-        <h2>
-          <i class="fas fa-code-branch me-2"></i>Paper Version Distribution
-        </h2>
-        <div id="versionChart" class="chart"></div>
-      </div>
-
-      <div class="chart-container">
-        <h2><i class="fas fa-users me-2"></i>Top 20 Active Authors</h2>
-        <div id="authorChart" class="chart"></div>
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+          <h2
+            class="text-xl font-semibold text-gray-700 mb-4 flex items-center"
+          >
+            <i class="fas fa-users mr-2 text-blue-600"></i>Top 20 Active Authors
+          </h2>
+          <div id="authorChart" class="chart"></div>
+        </div>
       </div>
     </div>
 
-    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script>
+    <!-- Use Cloudflare CDN for jQuery -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Remove Bootstrap JS -->
+    <!-- <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script> -->
     <script>
       // Initialize all charts
       const categoryChart = echarts.init(
@@ -214,84 +193,193 @@
       // Fetch data and update charts
       async function fetchData() {
         const limit = document.getElementById("limit").value;
+        showLoading(); // Show loading indicator
         try {
           const response = await fetch(
-            `/arxiv/metadata/analysis?limit=${limit}`
-          );
+            `/arxiv/metadata/analysis?limit=${limit}&type=all`
+          ); // Ensure type=all is sent
           const data = await response.json();
 
-          if (data.status === "success") {
+          if (data.status === "success" && data.analysis_results) {
             updateCharts(data.analysis_results);
           } else {
-            alert("Failed to fetch data: " + data.message);
+            displayError(data.message || "Failed to fetch analysis data.");
           }
         } catch (error) {
           console.error("Error:", error);
-          alert("Error occurred while fetching data");
+          displayError("An error occurred while fetching analysis data.");
+        } finally {
+          hideLoading(); // Hide loading indicator
         }
+      }
+
+      function showLoading() {
+        // You can implement a more sophisticated loading indicator if needed
+        console.log("Loading analysis data...");
+        // Optionally disable the button
+        $("button").prop("disabled", true);
+      }
+
+      function hideLoading() {
+        console.log("Finished loading.");
+        // Re-enable the button
+        $("button").prop("disabled", false);
+      }
+
+      function displayError(message) {
+        // Display error message somewhere on the page
+        // For now, just using alert
+        alert(message);
+        // Clear existing charts or show error state
+        clearCharts();
+        $("#basicStats").html(
+          `<div class="col-span-full p-4 text-red-700 bg-red-100 rounded-lg">${message}</div>`
+        );
+      }
+
+      function clearCharts() {
+        categoryChart.clear();
+        timeChart.clear();
+        versionChart.clear();
+        authorChart.clear();
+        // Set default options to show "No data" or similar
+        const noDataOption = {
+          title: { text: "No data available", left: "center", top: "center" },
+        };
+        categoryChart.setOption(noDataOption);
+        timeChart.setOption(noDataOption);
+        versionChart.setOption(noDataOption);
+        authorChart.setOption(noDataOption);
       }
 
       // Update all charts
       function updateCharts(data) {
-        updateBasicStats(data.basic_stats);
-        updateCategoryChart(data.category_analysis);
-        updateTimeChart(data.time_analysis);
-        updateVersionChart(data.time_analysis);
-        updateAuthorChart(data.author_analysis);
+        if (!data) {
+          displayError("Received no analysis data from the server.");
+          return;
+        }
+
+        // Check for individual analysis parts
+        if (data.basic_stats) updateBasicStats(data.basic_stats);
+        else
+          $("#basicStats").html(
+            '<div class="col-span-full p-4 text-yellow-700 bg-yellow-100 rounded-lg">Basic stats data missing.</div>'
+          );
+
+        if (data.category_analysis) updateCategoryChart(data.category_analysis);
+        else
+          categoryChart.setOption({
+            title: {
+              text: "Category data missing",
+              left: "center",
+              top: "center",
+            },
+          });
+
+        if (data.time_analysis) {
+          updateTimeChart(data.time_analysis);
+          updateVersionChart(data.time_analysis); // Uses time_analysis data
+        } else {
+          timeChart.setOption({
+            title: { text: "Time data missing", left: "center", top: "center" },
+          });
+          versionChart.setOption({
+            title: {
+              text: "Version data missing",
+              left: "center",
+              top: "center",
+            },
+          });
+        }
+
+        if (data.author_analysis) updateAuthorChart(data.author_analysis);
+        else
+          authorChart.setOption({
+            title: {
+              text: "Author data missing",
+              left: "center",
+              top: "center",
+            },
+          });
       }
 
-      // Update basic statistics cards
+      // Update basic statistics cards (Using Tailwind)
       function updateBasicStats(stats) {
         const basicStatsDiv = document.getElementById("basicStats");
+        if (!stats) {
+          basicStatsDiv.innerHTML =
+            '<div class="col-span-full p-4 text-yellow-700 bg-yellow-100 rounded-lg">Basic stats data is unavailable.</div>';
+          return;
+        }
         basicStatsDiv.innerHTML = `
-          <div class="stat-card">
-            <i class="fas fa-file-alt mb-3" style="font-size: 2rem; color: #2a5298;"></i>
-            <div class="stat-value">${stats.total_papers}</div>
-            <div class="stat-label">Total Papers</div>
+          <div class="stat-card bg-white p-5 rounded-lg shadow hover:shadow-md transition text-center">
+            <i class="fas fa-file-alt mb-3 text-3xl text-blue-600"></i>
+            <div class="stat-value text-2xl font-bold text-gray-800">${
+              stats.total_papers?.toLocaleString() ?? "N/A"
+            }</div>
+            <div class="stat-label text-sm text-gray-500 mt-1">Total Papers</div>
           </div>
-          <div class="stat-card">
-            <i class="fas fa-fingerprint mb-3" style="font-size: 2rem; color: #2a5298;"></i>
-            <div class="stat-value">${stats.papers_with_doi}</div>
-            <div class="stat-label">Papers with DOI</div>
+          <div class="stat-card bg-white p-5 rounded-lg shadow hover:shadow-md transition text-center">
+            <i class="fas fa-fingerprint mb-3 text-3xl text-blue-600"></i>
+            <div class="stat-value text-2xl font-bold text-gray-800">${
+              stats.papers_with_doi?.toLocaleString() ?? "N/A"
+            }</div>
+            <div class="stat-label text-sm text-gray-500 mt-1">Papers with DOI</div>
           </div>
-          <div class="stat-card">
-            <i class="fas fa-certificate mb-3" style="font-size: 2rem; color: #2a5298;"></i>
-            <div class="stat-value">${stats.papers_with_license}</div>
-            <div class="stat-label">Papers with License</div>
+          <div class="stat-card bg-white p-5 rounded-lg shadow hover:shadow-md transition text-center">
+            <i class="fas fa-certificate mb-3 text-3xl text-blue-600"></i>
+            <div class="stat-value text-2xl font-bold text-gray-800">${
+              stats.papers_with_license?.toLocaleString() ?? "N/A"
+            }</div>
+            <div class="stat-label text-sm text-gray-500 mt-1">Papers with License</div>
           </div>
-          <div class="stat-card">
-            <i class="fas fa-quote-right mb-3" style="font-size: 2rem; color: #2a5298;"></i>
-            <div class="stat-value">${stats.papers_with_journal_ref}</div>
-            <div class="stat-label">Papers with Journal Ref</div>
+          <div class="stat-card bg-white p-5 rounded-lg shadow hover:shadow-md transition text-center">
+            <i class="fas fa-quote-right mb-3 text-3xl text-blue-600"></i>
+            <div class="stat-value text-2xl font-bold text-gray-800">${
+              stats.papers_with_journal_ref?.toLocaleString() ?? "N/A"
+            }</div>
+            <div class="stat-label text-sm text-gray-500 mt-1">Papers with Journal Ref</div>
           </div>
         `;
       }
 
       // Update category distribution chart
       function updateCategoryChart(data) {
-        const categories = Object.entries(data.category_distribution).map(
-          ([name, value]) => ({ name, value })
-        );
+        if (!data || !data.category_distribution) {
+          categoryChart.setOption({
+            title: {
+              text: "Category data missing",
+              left: "center",
+              top: "center",
+            },
+          });
+          return;
+        }
+        const categories = Object.entries(data.category_distribution)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value); // Sort for better legend/tooltip
 
         const option = {
           tooltip: {
             trigger: "item",
+            formatter: "{a} <br/>{b} : {c} ({d}%)",
           },
           legend: {
             type: "scroll",
             orient: "vertical",
             right: 10,
-            top: 20,
-            bottom: 20,
+            top: "center",
+            data: categories.map((c) => c.name),
           },
           series: [
             {
               name: "Paper Categories",
               type: "pie",
-              radius: ["40%", "70%"],
+              radius: ["45%", "70%"], // Adjusted radius for doughnut
+              center: ["40%", "50%"], // Center adjusted for legend
               avoidLabelOverlap: true,
               itemStyle: {
-                borderRadius: 10,
+                borderRadius: 8,
                 borderColor: "#fff",
                 borderWidth: 2,
               },
@@ -302,7 +390,7 @@
               emphasis: {
                 label: {
                   show: true,
-                  fontSize: "20",
+                  fontSize: 18, // Slightly smaller emphasis label
                   fontWeight: "bold",
                 },
               },
@@ -313,90 +401,143 @@
             },
           ],
         };
-
-        categoryChart.setOption(option);
+        categoryChart.setOption(option, true); // Use true to clear previous options
       }
 
       // Update time trend chart
       function updateTimeChart(data) {
-        const years = Object.keys(data.yearly_distribution);
-        const counts = Object.values(data.yearly_distribution);
+        if (!data || !data.yearly_distribution) {
+          timeChart.setOption({
+            title: { text: "Time data missing", left: "center", top: "center" },
+          });
+          return;
+        }
+        const years = Object.keys(data.yearly_distribution).sort(); // Ensure years are sorted
+        const counts = years.map((year) => data.yearly_distribution[year]);
 
         const option = {
           tooltip: {
             trigger: "axis",
             axisPointer: {
-              type: "shadow",
+              type: "cross", // Cross pointer is often better for line charts
             },
           },
+          grid: { left: "3%", right: "4%", bottom: "3%", containLabel: true },
           xAxis: {
             type: "category",
+            boundaryGap: false, // Line starts from the axis
             data: years,
             name: "Year",
+            nameLocation: "middle",
+            nameGap: 30,
           },
           yAxis: {
             type: "value",
             name: "Number of Papers",
+            nameLocation: "middle",
+            nameGap: 50,
           },
+          dataZoom: [{ type: "inside" }, { type: "slider" }], // Add zoom
           series: [
             {
+              name: "Papers Published",
               data: counts,
               type: "line",
               smooth: true,
+              symbol: "none", // Hide points for cleaner look
               lineStyle: {
-                width: 3,
-                shadowColor: "rgba(0,0,0,0.3)",
-                shadowBlur: 10,
-                shadowOffsetY: 8,
+                width: 2,
               },
               areaStyle: {
                 opacity: 0.3,
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  {
+                    offset: 0,
+                    color: "rgb(55, 162, 255)",
+                  },
+                  {
+                    offset: 1,
+                    color: "rgb(116, 21, 219)",
+                  },
+                ]),
               },
             },
           ],
         };
-
-        timeChart.setOption(option);
+        timeChart.setOption(option, true);
       }
 
       // Update version distribution chart
       function updateVersionChart(data) {
-        const versions = Object.entries(data.version_distribution).map(
-          ([version, count]) => ({
+        if (!data || !data.version_distribution) {
+          versionChart.setOption({
+            title: {
+              text: "Version data missing",
+              left: "center",
+              top: "center",
+            },
+          });
+          return;
+        }
+        const versions = Object.entries(data.version_distribution)
+          .map(([version, count]) => ({
             value: count,
             name: `Version ${version}`,
-          })
-        );
+          }))
+          .sort(
+            (a, b) =>
+              parseInt(a.name.split(" ")[1]) - parseInt(b.name.split(" ")[1])
+          ); // Sort by version number
 
         const option = {
           tooltip: {
             trigger: "item",
+            formatter: "{a} <br/>{b} : {c} ({d}%)",
+          },
+          legend: {
+            orient: "vertical",
+            left: "left",
+            data: versions.map((v) => v.name),
           },
           series: [
             {
               name: "Version Distribution",
               type: "pie",
-              radius: "50%",
+              radius: "65%", // Slightly larger pie
+              center: ["60%", "50%"], // Adjust center for legend
               data: versions,
               emphasis: {
                 itemStyle: {
                   shadowBlur: 10,
                   shadowOffsetX: 0,
-                  shadowColor: "rgba(0, 0, 0, 0.5)",
+                  shadowColor: "rgba(0, 0, 0, 0.3)",
                 },
+              },
+              label: {
+                // Show labels outside
+                formatter: "{b}: {d}%",
               },
             },
           ],
         };
-
-        versionChart.setOption(option);
+        versionChart.setOption(option, true);
       }
 
       // Update author statistics chart
       function updateAuthorChart(data) {
+        if (!data || !data.top_authors) {
+          authorChart.setOption({
+            title: {
+              text: "Author data missing",
+              left: "center",
+              top: "center",
+            },
+          });
+          return;
+        }
         const authors = Object.entries(data.top_authors)
           .map(([name, count]) => ({ name, value: count }))
-          .sort((a, b) => b.value - a.value);
+          .sort((a, b) => a.value - b.value); // Sort ascending for horizontal bar
 
         const option = {
           tooltip: {
@@ -404,6 +545,7 @@
             axisPointer: {
               type: "shadow",
             },
+            formatter: "{b}: {c} papers",
           },
           grid: {
             left: "3%",
@@ -414,22 +556,58 @@
           xAxis: {
             type: "value",
             name: "Number of Papers",
+            nameLocation: "middle",
+            nameGap: 30,
           },
           yAxis: {
             type: "category",
             data: authors.map((a) => a.name),
-            name: "Author",
+            axisLabel: {
+              // Prevent labels from overlapping
+              interval: 0,
+              rotate: 0, // Adjust rotation if needed
+            },
           },
+          dataZoom: [
+            {
+              // Add vertical zoom/scroll for many authors
+              type: "slider",
+              yAxisIndex: 0,
+              filterMode: "empty",
+              width: 20,
+              right: 10,
+            },
+            {
+              type: "inside",
+              yAxisIndex: 0,
+              filterMode: "empty",
+            },
+          ],
           series: [
             {
               name: "Published Papers",
               type: "bar",
               data: authors.map((a) => a.value),
+              itemStyle: {
+                color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                  { offset: 0, color: "#83bff6" },
+                  { offset: 0.5, color: "#188df0" },
+                  { offset: 1, color: "#188df0" },
+                ]),
+              },
+              emphasis: {
+                itemStyle: {
+                  color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [
+                    { offset: 0, color: "#2378f7" },
+                    { offset: 0.7, color: "#2378f7" },
+                    { offset: 1, color: "#83bff6" },
+                  ]),
+                },
+              },
             },
           ],
         };
-
-        authorChart.setOption(option);
+        authorChart.setOption(option, true);
       }
 
       // Fetch data when page loads

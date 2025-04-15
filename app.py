@@ -10,22 +10,8 @@ import json
 from collections import Counter
 from datetime import datetime
 import os
-from flask_swagger_ui import get_swaggerui_blueprint
-
-# Configure Swagger UI
-SWAGGER_URL = '/api/docs'  # URL for accessing Swagger UI
-API_URL = '/static/swagger.yaml'  # URL for swagger.yaml file
-
-swaggerui_blueprint = get_swaggerui_blueprint(
-    SWAGGER_URL,
-    API_URL,
-    config={
-        'app_name': "Paper Analysis System API"
-    }
-)
 
 app = Flask(__name__)
-app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 CORS(app)
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -37,7 +23,8 @@ arxiv_client = ArxivClient()
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Serve arxiv.html as the homepage
+    return render_template('arxiv.html')
 
 @app.route('/search', methods=['GET'])
 def search_papers():
@@ -49,18 +36,21 @@ def search_papers():
         logger.info(f"Received search request - type: {entity_type}, name: {entity_name}, limit: {limit}")
 
         if not entity_type or not entity_name:
+            logger.warning("Missing required parameters: type and name")
             return jsonify({
                 'status': 'error',
                 'message': 'Missing required parameters: type and name'
             }), 400
 
         if entity_type not in ['person', 'organisation', 'work']:
+            logger.warning(f"Invalid entity type: {entity_type}")
             return jsonify({
                 'status': 'error',
                 'message': 'Invalid entity type. Must be one of: person, organisation, work'
             }), 400
 
         if limit not in ['one', 'all']:
+            logger.warning(f"Invalid limit: {limit}")
             return jsonify({
                 'status': 'error',
                 'message': 'Invalid limit. Must be one of: one, all'
@@ -78,18 +68,62 @@ def search_papers():
         results = cur.fetchall()
         logger.info(f"Found {len(results)} results")
         
+        # 实体类型映射，确保前后端一致
+        entity_type_mapping = {
+            'person': 'person',
+            'PERSON': 'person',
+            'organisation': 'organisation',
+            'organization': 'organisation',
+            'ORG': 'organisation',
+            'work': 'work'
+        }
+        
         formatted_results = []
         for result in results:
-            formatted_results.append({
-                'paper_id': result[0],
-                'paper_title': result[1],
-                'paper_pdf': result[2],
-                'paper_docx': result[3],
-                'paper_json': result[4],
-                'paper_entities': result[5],
-                'entity_name': result[9],
-                'entity_type': result[10]
-            })
+            try:
+                # 规范化实体类型
+                db_entity_type = result[10] if len(result) > 10 else None
+                # 确保db_entity_type是字符串类型
+                if isinstance(db_entity_type, str):
+                    normalized_entity_type = entity_type_mapping.get(db_entity_type, db_entity_type.lower())
+                else:
+                    # 如果是int或其他类型，直接使用entity_type
+                    normalized_entity_type = entity_type
+                
+                formatted_result = {
+                    'paper_id': result[0],
+                    'paper_title': result[1],
+                    'paper_name': result[1],  # 添加一致的字段名
+                    'title': result[1],       # 添加一致的字段名
+                    'paper_pdf': result[2],
+                    'pdf_path': result[2],   # 添加一致的字段名
+                    'paper_docx': result[3],
+                    'docx_path': result[3],  # 添加一致的字段名
+                    'paper_json': result[4],
+                    'json_path': result[4],  # 添加一致的字段名
+                    'paper_entities': result[5],
+                    'entities': result[5],   # 添加一致的字段名
+                    'entity_name': result[9] if len(result) > 9 and result[9] is not None else entity_name,
+                    'entity_type': normalized_entity_type
+                }
+                formatted_results.append(formatted_result)
+                
+                # 记录详细结果用于调试
+                logger.debug(f"Result: {formatted_result}")
+            except Exception as e:
+                logger.error(f"处理搜索结果时出错: {str(e)}, 结果: {result}")
+                continue
+        
+        # 记录查询结果统计
+        if formatted_results:
+            entity_types = {}
+            for res in formatted_results:
+                et = res['entity_type']
+                if et in entity_types:
+                    entity_types[et] += 1
+                else:
+                    entity_types[et] = 1
+            logger.info(f"Entity type distribution in results: {entity_types}")
         
         return jsonify({
             'status': 'success',
@@ -286,30 +320,63 @@ def health_check():
 def search_arxiv_papers():
     try:
         query = request.args.get('query', '')
+        # Get search_type from request, default to 'keyword'
+        search_type = request.args.get('search_type', 'keyword').lower()
         start = int(request.args.get('start', 0))
         max_results = int(request.args.get('max_results', 10))
         should_cluster = request.args.get('cluster', 'false').lower() == 'true'
         n_clusters = int(request.args.get('n_clusters', 5))
+
+        # Log the received search type
+        logger.info(f"Searching arXiv papers: query={query}, type={search_type}, start={start}, max_results={max_results}, cluster={should_cluster}")
+
+        # Pass search_type to the client method
+        search_result = arxiv_client.search_papers(query, start, max_results, search_type=search_type)
+
+        # Extract papers and total results from the dictionary
+        papers = search_result.get('papers', [])
+        total_results = search_result.get('total_results', 0)
         
-        logger.info(f"Searching arXiv papers: query={query}, start={start}, max_results={max_results}")
-        
-        # 搜索论文
-        papers = arxiv_client.search_papers(query, start, max_results)
-        
-        if isinstance(papers, dict) and 'error' in papers:
+        # Check for errors after getting papers and total_results
+        if 'error' in search_result:
             return jsonify({
                 'status': 'error',
-                'message': papers['error']
+                'message': search_result['error']
             }), 500
-            
-        # 保存到数据库
+
+        # Perform sentiment analysis on abstracts
+        try:
+            for paper in papers:
+                if paper.get('abstract'):
+                    # Assuming sentiment_analyzer has a method for direct text analysis
+                    # You might need to adapt this based on your SentimentAnalyzer implementation
+                    sentiment_score = sentiment_analyzer.analyze_text(paper['abstract'])
+                    if sentiment_score and 'overall_sentiment' in sentiment_score:
+                         polarity = sentiment_score['overall_sentiment']['polarity']
+                         paper['sentiment_label'] = sentiment_analyzer.get_sentiment_label(polarity)
+                         paper['sentiment_score'] = round(polarity, 2)
+                    else:
+                        paper['sentiment_label'] = 'N/A' # Mark if analysis failed
+                        paper['sentiment_score'] = 'N/A'
+                else:
+                    paper['sentiment_label'] = 'N/A' # No abstract
+                    paper['sentiment_score'] = 'N/A'
+        except Exception as e:
+            logger.error(f"Error during sentiment analysis for arXiv results: {str(e)}")
+            # Optionally mark all papers as N/A or handle differently
+            for paper in papers:
+                paper['sentiment_label'] = 'Error'
+                paper['sentiment_score'] = 'Error'
+
+        # 保存到数据库 (pass the list of papers)
         conn = get_connection("data/test_db.sqlite")
         try:
-            arxiv_client.save_papers_to_db(papers, conn)
+            if papers: # Only save if there are papers
+                arxiv_client.save_papers_to_db(papers, conn)
         except Exception as e:
             logger.error(f"Error saving papers to database: {str(e)}")
             # 继续处理，因为这不是致命错误
-        
+
         # 如果请求聚类
         if should_cluster and papers:
             papers_data = [{
@@ -317,27 +384,29 @@ def search_arxiv_papers():
                 'title': paper['title'],
                 'abstract': paper['abstract']
             } for paper in papers]
-            
+
             paper_clusterer.n_clusters = min(n_clusters, len(papers))
             clustering_results = paper_clusterer.process_papers(papers_data)
-            
+
             if 'error' in clustering_results:
                 return jsonify({
                     'status': 'error',
                     'message': clustering_results['error']
                 }), 500
-                
+
             return jsonify({
                 'status': 'success',
                 'papers': papers,
+                'total_results': total_results, # Include total results
                 'clusters': clustering_results
             })
-        
+
         return jsonify({
             'status': 'success',
-            'papers': papers
+            'papers': papers,
+            'total_results': total_results # Include total results
         })
-        
+
     except Exception as e:
         logger.error(f"Error searching arXiv papers: {str(e)}", exc_info=True)
         return jsonify({
@@ -392,10 +461,6 @@ def get_arxiv_paper(arxiv_id):
         if 'conn' in locals():
             conn.close()
 
-@app.route('/arxiv')
-def arxiv_page():
-    return render_template('arxiv.html')
-
 @app.route('/unified_search', methods=['GET'])
 def unified_search():
     try:
@@ -412,11 +477,31 @@ def unified_search():
         entity_name = request.args.get('name', '')
         limit = request.args.get('limit', 'all')
         
+        logger.info(f"统一搜索请求 - 类型: {search_type}, 实体类型: {entity_type}, 实体名称: {entity_name}, 额外查询: {query}")
+        
+        # 实体类型映射，确保前后端一致
+        entity_type_mapping = {
+            'person': 'person',
+            'PERSON': 'person',
+            'organisation': 'organisation',
+            'organization': 'organisation',
+            'ORG': 'organisation',
+            'work': 'work'
+        }
+        
+        # 处理人名查询的特殊情况
+        is_person_query = entity_type == 'person'
+        
         results = {
             'status': 'success',
             'local_results': [],
             'arxiv_results': [],
-            'clusters': None
+            'clusters': None,
+            'query_info': {
+                'entity_type': entity_type,
+                'entity_name': entity_name,
+                'is_person_query': is_person_query
+            }
         }
         
         conn = get_connection("data/test_db.sqlite")
@@ -425,33 +510,224 @@ def unified_search():
         # 执行本地搜索
         if search_type in ['local', 'all'] and entity_type and entity_name:
             try:
-                query_string = f"get {limit} papers that mention {entity_type} {entity_name}"
-                sql_query = build_query(query_string)
-                cur.execute(sql_query)
-                local_results = cur.fetchall()
+                logger.info(f"执行本地搜索 - 实体类型: {entity_type}, 实体名称: {entity_name}")
+                # 记录数据库中的实体类型情况
+                try:
+                    cur.execute("SELECT DISTINCT entity_type FROM entities")
+                    db_entity_types = [row[0] for row in cur.fetchall()]
+                    logger.info(f"数据库中的实体类型: {db_entity_types}")
+                    
+                    # 添加针对work类型的日志
+                    if entity_type == 'work':
+                        try:
+                            cur.execute("SELECT entity_id, entity_name FROM entities WHERE entity_type = 'work' LIMIT 5")
+                            sample_works = cur.fetchall()
+                            logger.info(f"数据库中的work类型实体样例: {sample_works}")
+                        except Exception as e:
+                            logger.error(f"获取work类型实体时出错: {str(e)}")
+                    
+                    # 查看是否有匹配的组织
+                    if entity_type in ['organisation', 'organization']:
+                        cur.execute("SELECT entity_id, entity_name FROM entities WHERE entity_type = 'ORG' LIMIT 5")
+                        sample_orgs = cur.fetchall()
+                        logger.info(f"数据库中的ORG类型实体样例: {sample_orgs}")
+                except Exception as e:
+                    logger.error(f"获取实体类型时出错: {str(e)}")
+                
+                # 对于人名的特殊处理，可以尝试多种姓名格式
+                if is_person_query:
+                    # 尝试使用精确查询
+                    exact_query_string = f"get {limit} papers that mention {entity_type} {entity_name}"
+                    logger.info(f"精确人名搜索查询: {exact_query_string}")
+                    
+                    exact_sql_query = build_query(exact_query_string)
+                    logger.info(f"精确人名SQL查询: {exact_sql_query}")
+                    
+                    cur.execute(exact_sql_query)
+                    local_results = cur.fetchall()
+                    logger.info(f"精确人名搜索找到 {len(local_results)} 个结果")
+                    logger.info(f"精确人名搜索结果: {local_results}")
+                    
+                    # 如果精确查询没有找到结果，尝试使用部分姓名或名字
+                    if len(local_results) == 0 and ' ' in entity_name:
+                        # 分解姓名
+                        name_parts = entity_name.split()
+                        
+                        # 可能的姓氏或名字
+                        for name_part in name_parts:
+                            if len(name_part) < 3:  # 忽略过短的部分
+                                continue
+                                
+                            partial_query_string = f"get {limit} papers that mention {entity_type} {name_part}"
+                            logger.info(f"部分人名搜索查询: {partial_query_string}")
+                            
+                            partial_sql_query = build_query(partial_query_string)
+                            cur.execute(partial_sql_query)
+                            partial_results = cur.fetchall()
+                            logger.info(f"部分人名搜索 '{name_part}' 找到 {len(partial_results)} 个结果")
+                            
+                            # 将部分匹配结果添加到主结果集
+                            for result in partial_results:
+                                # 检查是否已存在
+                                if not any(r[0] == result[0] for r in local_results):
+                                    local_results.append(result)
+                # 对于组织类型的特殊处理
+                elif entity_type in ['organisation', 'organization']:
+                    # 尝试使用精确查询
+                    exact_query_string = f"get {limit} papers that mention {entity_type} {entity_name}"
+                    logger.info(f"精确组织搜索查询: {exact_query_string}")
+                    
+                    exact_sql_query = build_query(exact_query_string)
+                    logger.info(f"精确组织SQL查询: {exact_sql_query}")
+                    
+                    cur.execute(exact_sql_query)
+                    local_results = cur.fetchall()
+                    logger.info(f"精确组织搜索找到 {len(local_results)} 个结果")
+                    
+                    # 如果精确查询没有找到结果，尝试使用部分组织名称
+                    if len(local_results) == 0 and ' ' in entity_name:
+                        # 构建部分匹配查询 - 使用更灵活的搜索方式
+                        words = entity_name.split()
+                        significant_words = [w for w in words if len(w) > 3]
+                        
+                        for word in significant_words:
+                            partial_query_string = f"get {limit} papers that mention {entity_type} {word}"
+                            logger.info(f"部分组织名称搜索查询: {partial_query_string}")
+                            
+                            partial_sql_query = build_query(partial_query_string)
+                            cur.execute(partial_sql_query)
+                            partial_results = cur.fetchall()
+                            logger.info(f"部分组织搜索 '{word}' 找到 {len(partial_results)} 个结果")
+                            
+                            # 将部分匹配结果添加到主结果集
+                            for result in partial_results:
+                                # 检查是否已存在
+                                if not any(r[0] == result[0] for r in local_results):
+                                    local_results.append(result)
+                                    
+                    # 尝试直接从实体表搜索包含关键词的组织
+                    if len(local_results) == 0:
+                        direct_query = """
+                            SELECT p.* FROM papers p
+                            JOIN papers_have_entities phe ON p.paper_id = phe.paper_id
+                            JOIN entities e ON phe.entity_id = e.entity_id
+                            WHERE e.entity_type = 'ORG' AND e.entity_name LIKE ?
+                        """
+                        search_term = f"%{entity_name}%"
+                        logger.info(f"直接实体表查询: {direct_query} with term: {search_term}")
+                        
+                        cur.execute(direct_query, (search_term,))
+                        direct_results = cur.fetchall()
+                        logger.info(f"直接实体表搜索找到 {len(direct_results)} 个结果")
+                        
+                        # 添加到主结果集
+                        for result in direct_results:
+                            if not any(r[0] == result[0] for r in local_results):
+                                local_results.append(result)
+                else:
+                    # 非人名实体的常规查询
+                    query_string = f"get {limit} papers that mention {entity_type} {entity_name}"
+                    logger.info(f"本地搜索查询字符串: {query_string}")
+                    
+                    sql_query = build_query(query_string)
+                    logger.info(f"生成的SQL查询: {sql_query}")
+                    
+                    cur.execute(sql_query)
+                    local_results = cur.fetchall()
+                    logger.info(f"本地搜索找到 {len(local_results)} 个结果")
                 
                 formatted_local_results = []
                 for result in local_results:
-                    formatted_local_results.append({
-                        'source': 'local',
-                        'paper_id': result[0],
-                        'title': result[1],
-                        'pdf_path': result[2],
-                        'docx_path': result[3],
-                        'json_path': result[4],
-                        'entities': result[5],
-                        'entity_name': result[9],
-                        'entity_type': result[10]
-                    })
+                    # 确保结果有足够的列
+                    if len(result) < 11:
+                        logger.warning(f"结果格式不正确，跳过此条: {result}")
+                        continue
+                        
+                    try:
+                        # 规范化实体类型
+                        db_entity_type = result[10] if len(result) > 10 else None
+                        # 确保db_entity_type是字符串类型
+                        if isinstance(db_entity_type, str):
+                            normalized_entity_type = entity_type_mapping.get(db_entity_type, db_entity_type.lower())
+                        else:
+                            # 如果是int或其他类型，直接使用entity_type
+                            normalized_entity_type = entity_type
+                        
+                        # 使用一致的字段名格式化结果
+                        paper_data = {
+                            'source': 'local',
+                            'paper_id': result[0],
+                            'title': result[1],
+                            'paper_name': result[1],
+                            'pdf_path': result[2],
+                            'docx_path': result[3],
+                            'json_path': result[4],
+                            'entities': result[5],
+                            'entity_name': result[9] if len(result) > 9 and result[9] is not None else entity_name,
+                            'entity_type': normalized_entity_type,
+                            'relevance_score': 1.0  # 默认相关性分数
+                        }
+                        
+                        # 计算相关性分数 - 用于排序
+                        if is_person_query:
+                            # 对于人名搜索，精确匹配得分高
+                            entity_name_lower = entity_name.lower()
+                            # 确保result[9]是字符串且不为None
+                            result_entity = result[9] if len(result) > 9 and result[9] is not None else ""
+                            result_entity_lower = result_entity.lower() if isinstance(result_entity, str) else ""
+                            
+                            if result_entity_lower == entity_name_lower:
+                                paper_data['relevance_score'] = 1.0  # 精确匹配
+                            elif entity_name_lower in result_entity_lower or result_entity_lower in entity_name_lower:
+                                paper_data['relevance_score'] = 0.8  # 部分匹配
+                            else:
+                                # 尝试从论文内容中找名字
+                                try:
+                                    with open(result[4], 'r', encoding='utf-8') as f:
+                                        paper_json = json.load(f)
+                                    paper_text = ""
+                                    for item in paper_json:
+                                        if isinstance(item, dict) and item.get('TYPE') == 'text':
+                                            paper_text += item.get('VALUE', '') + " "
+                                
+                                    if entity_name_lower in paper_text.lower():
+                                        paper_data['relevance_score'] = 0.6  # 内容中找到名字
+                                    else:
+                                        paper_data['relevance_score'] = 0.4  # 相关实体但不是直接匹配
+                                except Exception as e:
+                                    logger.error(f"解析论文内容时出错: {str(e)}")
+                                    paper_data['relevance_score'] = 0.3  # 无法检查内容
+                        
+                        formatted_local_results.append(paper_data)
+                    except Exception as e:
+                        logger.error(f"处理搜索结果时出错: {str(e)}, 结果: {result}")
+                        continue
+                
+                # 根据相关性分数排序结果
+                formatted_local_results.sort(key=lambda x: x['relevance_score'], reverse=True)
                 results['local_results'] = formatted_local_results
+                
+                # 记录检索到的实体信息，用于调试
+                if formatted_local_results:
+                    for i, paper in enumerate(formatted_local_results[:3]):  # 只记录前3条用于调试
+                        logger.info(f"结果 {i+1}: ID={paper['paper_id']}, 标题={paper['title']}, 实体={paper['entity_type']}:{paper['entity_name']}, 相关性={paper['relevance_score']}")
 
                 # 如果是本地搜索，也用实体名称搜索arXiv
                 if not query and entity_name:
-                    arxiv_query = entity_name
-                    arxiv_papers = arxiv_client.search_papers(arxiv_query, start, max_results)
+                    if is_person_query:
+                        # 使用专门的作者搜索功能
+                        logger.info(f"使用专门的作者搜索功能搜索arXiv: {entity_name}")
+                        arxiv_papers = arxiv_client.search_by_author(entity_name, start, max_results)
+                    else:
+                        # 普通实体搜索
+                        arxiv_query = entity_name
+                        logger.info(f"使用实体名称搜索arXiv: {arxiv_query}")
+                        arxiv_papers = arxiv_client.search_papers(arxiv_query, start, max_results)
+                    
                     if isinstance(arxiv_papers, dict) and 'error' in arxiv_papers:
                         results['arxiv_error'] = arxiv_papers['error']
                     else:
+                        logger.info(f"从arXiv找到 {len(arxiv_papers)} 个结果")
                         # 保存到arxiv_papers表
                         try:
                             arxiv_client.save_papers_to_db(arxiv_papers, conn)
@@ -549,7 +825,14 @@ def unified_search():
         # 执行arXiv搜索（如果有额外的arXiv查询关键词）
         if search_type in ['arxiv', 'all'] and query:
             try:
-                arxiv_papers = arxiv_client.search_papers(query, start, max_results)
+                # 对于人名搜索，使用专门的作者搜索功能
+                if is_person_query and query:
+                    logger.info(f"使用专门的作者搜索功能搜索arXiv: {query}")
+                    arxiv_papers = arxiv_client.search_by_author(query, start, max_results)
+                else:
+                    logger.info(f"使用普通关键词搜索arXiv: {query}")
+                    arxiv_papers = arxiv_client.search_papers(query, start, max_results)
+                    
                 if isinstance(arxiv_papers, dict) and 'error' in arxiv_papers:
                     results['arxiv_error'] = arxiv_papers['error']
                 else:
@@ -808,6 +1091,101 @@ def analyze_arxiv_metadata():
 @app.route('/arxiv/analysis')
 def arxiv_analysis_page():
     return render_template('arxiv_analysis.html')
+
+@app.route('/api/papers', methods=['GET'])
+def get_papers():
+    """获取论文列表的API"""
+    source = request.args.get('source', 'all')
+    try:
+        conn = get_connection("data/test_db.sqlite")
+        
+        if source == 'local':
+            # 使用简化的查询逻辑获取本地论文
+            query = "SELECT rowid as id, * FROM papers"
+            papers = query_db(conn, query)
+            
+        elif source == 'arxiv':
+            # 从arxiv_papers表获取论文
+            query = """
+                SELECT 
+                    arxiv_id as id,
+                    title,
+                    abstract,
+                    authors,
+                    categories,
+                    published,
+                    updated,
+                    pdf_url,
+                    relevance_score,
+                    json_data
+                FROM arxiv_papers
+                ORDER BY relevance_score DESC, published DESC
+            """
+            papers = query_db(conn, query)
+            
+            # 处理json格式的字段
+            for paper in papers:
+                try:
+                    paper['authors'] = json.loads(paper['authors']) if paper['authors'] else []
+                    paper['categories'] = json.loads(paper['categories']) if paper['categories'] else []
+                except:
+                    paper['authors'] = []
+                    paper['categories'] = []
+                
+                # 确保各字段存在
+                paper['entity_type'] = 'arxiv'
+                if paper.get('id') and not paper.get('arxiv_id'):
+                    paper['arxiv_id'] = paper['id']
+                    
+        elif source == 'all':
+            # 合并本地和arxiv的查询结果
+            local_query = "SELECT rowid as id, * FROM papers"
+            arxiv_query = """
+                SELECT 
+                    arxiv_id as id,
+                    title,
+                    abstract,
+                    authors,
+                    categories,
+                    published,
+                    updated,
+                    pdf_url,
+                    relevance_score,
+                    json_data,
+                    'arxiv' as source
+                FROM arxiv_papers
+            """
+            
+            papers = query_db(conn, local_query)
+            for paper in papers:
+                paper['source'] = 'local'
+            
+            arxiv_papers = query_db(conn, arxiv_query)
+            # 处理json格式的字段
+            for paper in arxiv_papers:
+                try:
+                    paper['authors'] = json.loads(paper['authors']) if paper['authors'] else []
+                    paper['categories'] = json.loads(paper['categories']) if paper['categories'] else []
+                except:
+                    paper['authors'] = []
+                    paper['categories'] = []
+                
+                # 确保各字段存在
+                paper['entity_type'] = 'arxiv'
+                if paper.get('id') and not paper.get('arxiv_id'):
+                    paper['arxiv_id'] = paper['id']
+            
+            papers.extend(arxiv_papers)
+            
+            # 按发布日期排序
+            papers.sort(key=lambda x: x.get('published', ''), reverse=True)
+        
+        conn.close()
+        return jsonify({'papers': papers})
+    
+    except Exception as e:
+        logger.error(f"获取论文列表失败: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     logger.info("Starting Flask application...")

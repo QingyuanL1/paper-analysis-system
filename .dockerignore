@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 大型数据文件
+*.csv
+*.json
+!arxiv/yuan.json
+
+# 虚拟环境
+venv/
+.env
+.venv
+ENV/
+
+# IDE
+.idea/
+.vscode/
+
+# 杂项
+.DS_Store
+*.log
+
+# 系统文件
+Thumbs.db
+
+# 数据文件（我们会挂载这些目录）
+data/*.sqlite
+
+# 其他不需要的文件
+*.bak
+historyPSD.txt
+
+# 文档文件
+docker-readme.md 

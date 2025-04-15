@@ -1,0 +1,25 @@
+version: '3'
+
+services:
+  paper-analysis-system:
+    build: .
+    container_name: paper-analysis-system
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./data:/app/data
+      - ./Papers:/app/Papers
+      - ./Docs:/app/Docs
+      - ./JSON:/app/JSON
+      - ./Ents:/app/Ents
+      - ./arxiv:/app/arxiv
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s 

@@ -18,6 +18,8 @@ The Paper Analysis System is an integrated academic paper search and analysis pl
 
 ## Installation
 
+### 方法一：直接安装
+
 1. Navigate to the project repository:
 ```bash
 cd paper-analysis-system
@@ -31,6 +33,28 @@ pip install -r requirements.txt
 3. Start the application:
 ```bash
 python app.py
+```
+
+### 方法二：使用Docker（推荐）
+
+1. 确保已安装Docker和Docker Compose，然后在项目目录中运行：
+```bash
+docker-compose up -d
+```
+
+2. 应用将在后台启动，可通过以下地址访问：
+```
+http://localhost:5002
+```
+
+3. 查看应用日志：
+```bash
+docker-compose logs -f
+```
+
+4. 停止应用：
+```bash
+docker-compose down
 ```
 
 ## Main Features

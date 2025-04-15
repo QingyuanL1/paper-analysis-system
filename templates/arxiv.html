@@ -3,122 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>arXiv论文搜索 - Academic Paper Analysis System</title>
-    <link
-      href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css"
+    <title>arXiv Paper Search - Academic Paper Analysis System</title>
+    <!-- Remove Bootstrap CSS -->
+    <!-- <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css"
       rel="stylesheet"
-    />
+    /> -->
+    <!-- Add Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Keep FontAwesome -->
     <link
-      href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
       rel="stylesheet"
     />
     <style>
+      /* Minimal custom styles if needed, prefer Tailwind classes */
       body {
-        background-color: #f8f9fa;
-        font-family: "Microsoft YaHei", sans-serif;
+        font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       }
-      .navbar {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        padding: 1rem 0;
-        margin-bottom: 0;
-      }
-      .navbar-brand,
-      .nav-link {
-        color: white !important;
-      }
-      .nav-link:hover {
-        color: rgba(255, 255, 255, 0.8) !important;
-      }
-      .header {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        color: white;
-        padding: 2rem 0;
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .search-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-        margin-bottom: 2rem;
-      }
-      .results-container {
-        background: white;
-        padding: 2rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
-      }
-      .paper-card {
-        border: 1px solid #eee;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-      .paper-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      }
-      .loading-spinner {
-        display: none;
-        text-align: center;
-        padding: 2rem;
-      }
-      .cluster-container {
-        margin-top: 2rem;
-        padding: 1rem;
-        background-color: #f8f9fa;
-        border-radius: 8px;
-      }
-      .cluster-terms {
-        display: inline-block;
-        background-color: #e9ecef;
-        padding: 0.3rem 0.6rem;
-        margin: 0.2rem;
-        border-radius: 15px;
-        font-size: 0.9rem;
-      }
-      #clusterVisualization {
-        width: 100%;
-        height: 400px;
-        margin-top: 1rem;
-      }
-      .abstract-text {
-        font-size: 0.9rem;
-        color: #666;
-        margin-top: 1rem;
-      }
-      .authors-list {
-        color: #2a5298;
-        font-size: 0.9rem;
-        margin: 0.5rem 0;
-      }
-      .categories-list {
-        font-size: 0.8rem;
-      }
-      .category-tag {
-        display: inline-block;
-        background-color: #e9ecef;
-        padding: 0.2rem 0.5rem;
-        margin: 0.1rem;
-        border-radius: 12px;
-      }
-      .skeleton-loading {
-        padding: 1rem;
-      }
+      /* Hide scrollbar for modal backdrop if needed (Tailwind might handle this) */
+      /* Add specific component styles here if Tailwind utilities become too complex */
+
+      /* Skeleton Loader Animation */
       .skeleton-line {
-        height: 1rem;
         background: linear-gradient(
           90deg,
-          #f0f0f0 25%,
-          #e0e0e0 50%,
-          #f0f0f0 75%
+          #e5e7eb 25%,
+          /* gray-200 */ #d1d5db 50%,
+          /* gray-300 */ #e5e7eb 75%
         );
         background-size: 200% 100%;
-        animation: loading 1.5s infinite;
-        border-radius: 4px;
-        margin-bottom: 0.5rem;
+        animation: loading 1.5s infinite linear;
       }
       @keyframes loading {
         0% {
@@ -128,396 +43,855 @@
           background-position: -200% 0;
         }
       }
-      .paper-metadata {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-      }
-      .paper-metadata dt {
-        color: #666;
-      }
-      .paper-links {
-        margin-top: 1rem;
-      }
-      .paper-links a {
-        margin-right: 1rem;
-      }
     </style>
+    <script>
+      // Optional: Configure Tailwind if needed
+      // tailwind.config = {
+      //   theme: {
+      //     extend: {
+      //       colors: {
+      //         primary: '#005AA7',
+      //       }
+      //     }
+      //   }
+      // }
+    </script>
   </head>
-  <body>
+  <body class="bg-gray-100">
     <!-- 导航栏 -->
-    <nav class="navbar navbar-expand-lg">
-      <div class="container">
-        <a class="navbar-brand" href="/">
-          <i class="fas fa-book-reader me-2"></i>Paper Analysis System
-        </a>
-        <button
-          class="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
+    <nav
+      class="bg-gradient-to-r from-blue-700 via-blue-100 to-yellow-50 shadow-md py-3"
+    >
+      <div class="container mx-auto px-4 flex justify-between items-center">
+        <a
+          class="text-gray-800 font-semibold text-lg hover:text-blue-800"
+          href="/"
         >
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav">
-            <li class="nav-item">
-              <a class="nav-link" href="/">Local Papers</a>
+          <i class="fas fa-book-reader mr-2"></i>Paper Analysis System
+        </a>
+        <!-- Mobile Menu Button Placeholder -->
+        <!-- <button class="md:hidden block text-gray-800">
+          <i class="fas fa-bars"></i>
+        </button> -->
+        <!-- Navigation Links -->
+        <div class="hidden md:block">
+          <ul class="flex space-x-6">
+            <li>
+              <a class="text-blue-700 font-medium" href="/">arXiv Search</a>
             </li>
-            <li class="nav-item">
-              <a class="nav-link active" href="/arxiv">arXiv Papers</a>
+            <li>
+              <a
+                class="text-gray-700 hover:text-blue-700 font-medium"
+                href="/arxiv/analysis"
+                >arXiv Analysis</a
+              >
             </li>
           </ul>
         </div>
       </div>
     </nav>
 
-    <div class="header">
-      <div class="container">
-        <h1>arXiv Paper Search</h1>
-        <p class="mb-0">
+    <!-- Header -->
+    <div
+      class="bg-gradient-to-r from-blue-700 to-blue-500 text-white py-10 mb-8 text-center"
+    >
+      <div class="container mx-auto px-4">
+        <h1 class="text-4xl font-light mb-2">arXiv Paper Search</h1>
+        <p class="text-xl text-blue-100">
           Real-time search and cluster analysis of latest arXiv papers
         </p>
       </div>
     </div>
 
-    <div class="container">
-      <div class="search-container">
-        <h2 class="mb-4"><i class="fas fa-search me-2"></i>Search Papers</h2>
-        <form id="arxivSearchForm" class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Search Keywords</label>
+    <div class="container mx-auto px-4">
+      <!-- Search Container -->
+      <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-10">
+        <h2
+          class="text-3xl font-semibold text-gray-700 border-b border-gray-200 pb-3 mb-6 flex items-center"
+        >
+          <i class="fas fa-search mr-3 text-blue-600"></i>Search Papers
+        </h2>
+        <!-- Form needs significant rework with Tailwind classes -->
+        <form
+          id="arxivSearchForm"
+          class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end"
+        >
+          <!-- Query -->
+          <div class="md:col-span-3">
+            <label
+              for="query"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Search Keywords</label
+            >
             <input
               type="text"
-              class="form-control"
+              id="query"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               name="query"
-              placeholder="Enter search keywords"
+              placeholder="Enter keywords, author name, or title"
               required
             />
           </div>
-          <div class="col-md-2">
-            <label class="form-label">Results Count</label>
+          <!-- Search Type -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1"
+              >Search Type</label
+            >
+            <div class="flex space-x-4 mt-2">
+              <div class="flex items-center">
+                <input
+                  id="typeKeyword"
+                  name="search_type"
+                  type="radio"
+                  value="keyword"
+                  class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                  checked
+                />
+                <label
+                  for="typeKeyword"
+                  class="ml-2 block text-sm text-gray-900"
+                  >Keyword</label
+                >
+              </div>
+              <div class="flex items-center">
+                <input
+                  id="typeAuthor"
+                  name="search_type"
+                  type="radio"
+                  value="author"
+                  class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                />
+                <label for="typeAuthor" class="ml-2 block text-sm text-gray-900"
+                  >Author</label
+                >
+              </div>
+              <div class="flex items-center">
+                <input
+                  id="typeTitle"
+                  name="search_type"
+                  type="radio"
+                  value="title"
+                  class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                />
+                <label for="typeTitle" class="ml-2 block text-sm text-gray-900"
+                  >Title</label
+                >
+              </div>
+            </div>
+          </div>
+          <!-- Results Count -->
+          <div>
+            <label
+              for="max_results"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Count</label
+            >
             <input
               type="number"
-              class="form-control"
+              id="max_results"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               name="max_results"
               value="10"
               min="1"
               max="50"
             />
           </div>
-          <div class="col-md-2">
-            <label class="form-label">Enable Clustering</label>
-            <select class="form-select" name="cluster">
+          <!-- Enable Clustering -->
+          <div>
+            <label
+              for="cluster"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Clustering</label
+            >
+            <select
+              id="cluster"
+              name="cluster"
+              class="mt-1 block w-full rounded-md border-gray-300 py-2 px-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+            >
               <option value="true">Yes</option>
-              <option value="false">No</option>
+              <option value="false" selected>No</option>
             </select>
           </div>
-          <div class="col-md-2">
-            <label class="form-label">Number of Clusters</label>
+          <!-- Number of Clusters -->
+          <div>
+            <label
+              for="n_clusters"
+              class="block text-sm font-medium text-gray-700 mb-1"
+              >Clusters</label
+            >
             <input
               type="number"
-              class="form-control"
+              id="n_clusters"
+              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100"
               name="n_clusters"
               value="3"
               min="2"
               max="10"
+              disabled
             />
           </div>
-          <div class="col-12">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-search me-2"></i>Search
+          <!-- Submit Button -->
+          <div class="md:col-start-6">
+            <button
+              type="submit"
+              class="w-full inline-flex justify-center items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <i class="fas fa-search mr-2"></i>Search
             </button>
           </div>
         </form>
       </div>
 
-      <div class="loading-spinner">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
+      <!-- Loading Spinner -->
+      <div
+        id="loadingSpinner"
+        class="loading-spinner hidden text-center p-16 bg-white/80 rounded-xl mb-10"
+      >
+        <div role="status">
+          <svg
+            aria-hidden="true"
+            class="inline w-10 h-10 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
+            viewBox="0 0 100 101"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+              fill="currentColor"
+            />
+            <path
+              d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+              fill="currentFill"
+            />
+          </svg>
+          <span class="sr-only">Loading...</span>
         </div>
-        <p class="mt-2">Searching and analyzing papers, please wait...</p>
+        <p class="mt-4 text-lg text-gray-600">
+          Searching and analyzing papers, please wait...
+        </p>
       </div>
 
-      <div class="results-container" style="display: none">
-        <h2 class="mb-4"><i class="fas fa-list me-2"></i>Search Results</h2>
-        <div id="searchResults"></div>
-        <div id="clusterResults" style="display: none">
-          <h3 class="mt-4 mb-3">Clustering Results</h3>
+      <!-- Results Container -->
+      <div
+        id="resultsContainer"
+        class="bg-white p-6 md:p-8 rounded-xl shadow-lg mb-12 hidden"
+      >
+        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+          <i class="fas fa-list mr-2 text-blue-600"></i>Search Results
+        </h2>
+        <!-- Search results content -->
+        <div id="searchResults" class="space-y-6"></div>
+        <!-- Pagination -->
+        <nav aria-label="Page navigation" class="mt-8">
+          <ul
+            class="pagination flex justify-center space-x-1"
+            id="paginationControls"
+          ></ul>
+        </nav>
+        <!-- Cluster Results -->
+        <div
+          id="clusterResults"
+          class="hidden mt-10 pt-8 border-t border-gray-200"
+        >
+          <h3 class="text-xl font-semibold mb-4 flex items-center">
+            <i class="fas fa-project-diagram mr-2 text-blue-600"></i>Clustering
+            Results
+          </h3>
           <div id="clusterContainer"></div>
         </div>
       </div>
     </div>
 
-    <!-- 添加模态框 -->
-    <div class="modal fade" id="paperDetailModal" tabindex="-1">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Paper Details</h5>
-            <button
-              type="button"
-              class="btn-close"
-              data-bs-dismiss="modal"
-            ></button>
-          </div>
-          <div class="modal-body">
-            <div class="paper-detail-content">
-              <div class="skeleton-loading">
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line"></div>
-                <div class="skeleton-line"></div>
+    <!-- Paper Detail Modal -->
+    <div
+      id="paperDetailModal"
+      class="fixed inset-0 z-50 hidden overflow-y-auto"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0"
+      >
+        <!-- Background overlay -->
+        <div
+          id="modalBackdrop"
+          class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+          aria-hidden="true"
+        ></div>
+
+        <!-- Modal panel -->
+        <span
+          class="hidden sm:inline-block sm:h-screen sm:align-middle"
+          aria-hidden="true"
+          >&#8203;</span
+        >
+        <div
+          class="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl sm:align-middle"
+        >
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div
+              class="flex justify-between items-start pb-3 border-b border-gray-200"
+            >
+              <h5
+                class="text-lg font-semibold leading-6 text-gray-900"
+                id="modal-title"
+              >
+                Paper Details
+              </h5>
+              <button
+                type="button"
+                id="closeModalButton"
+                class="p-1 text-gray-400 hover:text-gray-600"
+              >
+                <span class="sr-only">Close</span>
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="mt-4">
+              <div class="paper-detail-content">
+                <!-- Skeleton shown while loading -->
+                <div class="skeleton-loading p-4 space-y-3">
+                  <div class="skeleton-line h-5 w-4/5 rounded"></div>
+                  <div class="skeleton-line h-4 w-3/5 rounded"></div>
+                  <div class="skeleton-line h-20 w-full rounded"></div>
+                  <div class="skeleton-line h-4 w-4/6 rounded"></div>
+                  <div class="skeleton-line h-4 w-3/6 rounded"></div>
+                </div>
               </div>
             </div>
           </div>
+          <!-- Optional Modal Footer -->
+          <!-- <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+            <button type="button" class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">Cancel</button>
+          </div> -->
         </div>
       </div>
     </div>
 
-    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <!-- Keep jQuery for existing logic, FontAwesome already linked -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- Remove Bootstrap JS -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <script>
+      // Modal Handling Functions (Replaces Bootstrap JS Modal)
+      const modal = $("#paperDetailModal");
+      const closeModalButton = $("#closeModalButton");
+      const modalBackdrop = $("#modalBackdrop");
+
+      function openModal() {
+        modal.removeClass("hidden");
+        // Optional: Add animation classes
+      }
+
+      function closeModal() {
+        modal.addClass("hidden");
+        // Optional: Remove animation classes
+      }
+
+      closeModalButton.on("click", closeModal);
+      modalBackdrop.on("click", closeModal); // Close on backdrop click
+      // Optional: Close on Escape key
+      $(document).on("keydown", function (event) {
+        if (event.key === "Escape") {
+          closeModal();
+        }
+      });
+
       function showLoading() {
-        $(".loading-spinner").show();
+        $("#loadingSpinner").removeClass("hidden");
+        $("#resultsContainer").addClass("hidden"); // Hide results while loading
       }
 
       function hideLoading() {
-        $(".loading-spinner").hide();
+        $("#loadingSpinner").addClass("hidden");
       }
 
       function displayArxivResults(data) {
         let resultsHtml = "";
+        const papers = data.papers || []; // Ensure papers is an array
 
-        // 显示论文列表
-        data.papers.forEach((paper) => {
-          resultsHtml += `
-            <div class="paper-card">
-              <h4>${paper.title}</h4>
-              <div class="authors-list">
-                <i class="fas fa-users me-2"></i>${paper.authors.join(", ")}
-              </div>
-              <div class="categories-list mb-2">
-                ${paper.categories
-                  .map(
-                    (cat) => `
-                  <span class="category-tag">${cat}</span>
-                `
-                  )
-                  .join("")}
-              </div>
-              <p class="abstract-text">${paper.abstract}</p>
-              <div class="d-flex gap-2">
-                <a href="${
-                  paper.pdf_url
-                }" target="_blank" class="btn btn-sm btn-outline-primary">
-                  <i class="fas fa-file-pdf me-2"></i>PDF
-                </a>
-                <button class="btn btn-sm btn-outline-secondary" onclick="showPaperDetail('${
-                  paper.arxiv_id
-                }')">
-                  <i class="fas fa-info-circle me-2"></i>Details
-                </button>
-              </div>
-            </div>
-          `;
-        });
-
-        $("#searchResults").html(resultsHtml);
-
-        // 如果有聚类结果，显示聚类信息
-        if (data.clusters) {
-          $("#clusterResults").show();
-          let clusterHtml = "";
-
-          // 显示每个簇的关键词
-          Object.entries(data.clusters.cluster_terms).forEach(
-            ([clusterId, terms]) => {
-              clusterHtml += `
-              <div class="cluster-container">
-                <h5>Cluster ${parseInt(clusterId) + 1}</h5>
-                <div>
-                  ${terms
-                    .map(
-                      (term) => `
-                    <span class="cluster-terms">${term}</span>
-                  `
-                    )
-                    .join("")}
+        if (papers.length === 0) {
+          resultsHtml =
+            '<div class="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">No papers found matching your query.</div>';
+        } else {
+          papers.forEach((paper) => {
+            resultsHtml += `
+              <div class="paper-card bg-white rounded-lg shadow hover:shadow-md transition duration-200 p-6">
+                <h4 class="text-lg font-semibold text-gray-800 mb-2">${
+                  paper.title
+                }</h4>
+                <div class="authors-list text-sm text-blue-700 mb-2">
+                  <i class="fas fa-users mr-1"></i>${paper.authors.join(", ")}
+                </div>
+                <div class="flex justify-between items-center mb-3">
+                     <div class="categories-list flex flex-wrap gap-1">
+                      ${paper.categories
+                        .map(
+                          (cat) =>
+                            `<span class="category-tag inline-block bg-gray-200 text-gray-700 text-xs font-medium px-2.5 py-0.5 rounded-full">${cat}</span>`
+                        )
+                        .join("")}
+                    </div>
+                    <!-- Sentiment Label -->
+                     <span id="sentiment-${
+                       paper.arxiv_id
+                     }" class="sentiment-badge text-xs font-medium px-2.5 py-0.5 rounded-full ${getSentimentClass(
+              paper.sentiment_label
+            )}">
+                        ${paper.sentiment_label || "N/A"}
+                        ${
+                          paper.sentiment_score
+                            ? `(${paper.sentiment_score})`
+                            : ""
+                        }
+                    </span>
+                </div>
+                <p class="abstract-text text-sm text-gray-600 leading-relaxed mb-4">${
+                  paper.abstract
+                }</p>
+                <div class="flex flex-wrap gap-2"> 
+                  <a href="${
+                    paper.pdf_url
+                  }" target="_blank" class="inline-flex items-center px-3 py-1 border border-blue-600 text-sm font-medium rounded text-blue-600 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <i class="fas fa-file-pdf mr-2"></i>PDF
+                  </a>
+                  <button class="inline-flex items-center px-3 py-1 border border-gray-400 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" onclick="showPaperDetail('${
+                    paper.arxiv_id
+                  }')">
+                    <i class="fas fa-info-circle mr-2"></i>Details
+                  </button>
                 </div>
               </div>
             `;
+          });
+        }
+
+        $("#searchResults").html(resultsHtml);
+
+        // Cluster results section update (basic structure, styling in HTML/CSS)
+        if (data.clusters && papers.length > 0) {
+          $("#clusterResults").removeClass("hidden");
+          let clusterHtml = "";
+          let visualizationDataReady = false;
+
+          if (data.clusters.cluster_terms) {
+            Object.entries(data.clusters.cluster_terms).forEach(
+              ([clusterId, terms]) => {
+                clusterHtml += `
+                  <div class="cluster-container mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h5 class="font-semibold text-blue-800 mb-2">Cluster ${
+                      parseInt(clusterId) + 1
+                    }</h5>
+                    <div class="flex flex-wrap gap-2">
+                      ${terms
+                        .map(
+                          (term) =>
+                            `<span class="cluster-terms inline-block bg-blue-200 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">${term}</span>`
+                        )
+                        .join("")}
+                    </div>
+                  </div>
+                `;
+              }
+            );
+            $("#clusterContainer").html(clusterHtml); // Render terms first
+          } else {
+            $("#clusterContainer").html(""); // Clear if no terms
+          }
+
+          // Visualization logic remains mostly the same, ensure container exists
+          if ($("#clusterVisualization").length === 0) {
+            const visualizationDiv = $(
+              '<div id="clusterVisualization" class="w-full h-[450px] mt-6"></div>'
+            );
+            $("#clusterContainer").append(visualizationDiv);
+          }
+          const chartContainer = document.getElementById(
+            "clusterVisualization"
+          );
+          if (chartContainer) {
+            const chartInstance = echarts.getInstanceByDom(chartContainer);
+            if (chartInstance) {
+              chartInstance.dispose();
             }
-          );
 
-          $("#clusterContainer").html(clusterHtml);
+            if (data.clusters.clusters) {
+              const series = Object.entries(data.clusters.clusters).map(
+                ([clusterId, clusterPapers]) => ({
+                  name: `Cluster ${parseInt(clusterId) + 1}`,
+                  type: "scatter",
+                  data: clusterPapers.map((paper) => [
+                    paper.x,
+                    paper.y,
+                    paper.title,
+                    paper.authors,
+                  ]), // Include title/authors
+                  symbolSize: 12,
+                  emphasis: {
+                    itemStyle: { borderColor: "#000", borderWidth: 1 },
+                  },
+                })
+              );
 
-          // 添加可视化
-          const visualizationDiv = $('<div id="clusterVisualization"></div>');
-          $("#clusterContainer").append(visualizationDiv);
+              const option = {
+                // Echarts options (mostly unchanged, adjust styling via options if needed)
+                title: {
+                  text: "Paper Clustering",
+                  left: "center",
+                  textStyle: { fontWeight: "normal", fontSize: 16 },
+                },
+                tooltip: {
+                  formatter: function (params) {
+                    const title = params.data[2] || "N/A";
+                    const authors = params.data[3]
+                      ? params.data[3].join(", ")
+                      : "N/A";
+                    return `${title}<br/>Authors: ${authors}`;
+                  },
+                  backgroundColor: "rgba(50, 50, 50, 0.8)",
+                  borderColor: "#333",
+                  textStyle: { color: "#fff" },
+                },
+                xAxis: { show: false },
+                yAxis: { show: false },
+                series: series,
+                grid: {
+                  left: "5%",
+                  right: "5%",
+                  bottom: "10%",
+                  top: "10%",
+                  containLabel: true,
+                }, // Adjust grid
+                dataZoom: [
+                  { type: "inside", xAxisIndex: 0, filterMode: "filter" },
+                  { type: "inside", yAxisIndex: 0, filterMode: "filter" },
+                  {
+                    type: "slider",
+                    xAxisIndex: 0,
+                    filterMode: "filter",
+                    bottom: 10,
+                    height: 20,
+                  },
+                  {
+                    type: "slider",
+                    yAxisIndex: 0,
+                    filterMode: "filter",
+                    right: 10,
+                    width: 20,
+                  },
+                ],
+                legend: {
+                  orient: "vertical",
+                  right: 10,
+                  top: "center",
+                  data: series.map((s) => s.name),
+                },
+              };
+              const chart = echarts.init(chartContainer);
+              chart.setOption(option);
+              visualizationDataReady = true;
+            } else {
+              $("#clusterContainer").append(
+                '<div class="mt-4 p-3 text-sm text-yellow-700 bg-yellow-100 rounded">Clustering data missing for visualization.</div>'
+              );
+            }
+          }
 
-          // 使用ECharts绘制散点图
-          const chart = echarts.init(
-            document.getElementById("clusterVisualization")
-          );
-
-          // 准备数据
-          const series = Object.entries(data.clusters.clusters).map(
-            ([clusterId, papers]) => ({
-              name: `Cluster ${parseInt(clusterId) + 1}`,
-              type: "scatter",
-              data: papers.map((paper) => [paper.x, paper.y]),
-              symbolSize: 10,
-            })
-          );
-
-          const option = {
-            title: {
-              text: "Paper Clustering Visualization",
-              left: "center",
-            },
-            tooltip: {
-              formatter: function (params) {
-                const paper = data.clusters.clusters[params.seriesIndex].find(
-                  (p) => p.x === params.data[0] && p.y === params.data[1]
-                );
-                return `${paper.title}`;
-              },
-            },
-            xAxis: {},
-            yAxis: {},
-            series: series,
-          };
-
-          chart.setOption(option);
+          if (!visualizationDataReady) {
+            $("#clusterVisualization").addClass("hidden");
+          }
+        } else {
+          $("#clusterResults").addClass("hidden");
         }
       }
 
-      function showPaperDetail(arxivId) {
-        const modal = new bootstrap.Modal(
-          document.getElementById("paperDetailModal")
-        );
-        modal.show();
+      function displayPagination(currentPage, totalResults, resultsPerPage) {
+        const paginationControls = $("#paginationControls");
+        paginationControls.empty();
 
+        const totalPages = Math.ceil(totalResults / resultsPerPage);
+        if (totalPages <= 1 || totalResults === 0) {
+          return;
+        }
+
+        const createPageLink = (
+          page,
+          label,
+          isDisabled = false,
+          isActive = false
+        ) => {
+          const disabledClasses = isDisabled
+            ? "text-gray-400 cursor-not-allowed"
+            : "text-blue-600 hover:bg-blue-100";
+          const activeClasses = isActive
+            ? "bg-blue-600 text-white hover:bg-blue-700 z-10"
+            : "bg-white";
+          return `
+            <li>
+              <a href="#" 
+                 class="page-link relative inline-flex items-center justify-center px-3.5 py-1.5 rounded-full text-sm font-medium ${activeClasses} ${disabledClasses} transition-colors duration-150" 
+                 data-page="${page}" 
+                 aria-label="${
+                   typeof label === "number" ? `Page ${label}` : label
+                 }"
+                 ${isDisabled ? 'aria-disabled="true" tabindex="-1"' : ""}>
+                ${
+                  typeof label === "number"
+                    ? label
+                    : `<span aria-hidden="true">${label}</span>`
+                }
+              </a>
+            </li>`;
+        };
+
+        // Previous button
+        paginationControls.append(
+          createPageLink(currentPage - 1, "&laquo;", currentPage === 1)
+        );
+
+        // Page numbers
+        const maxPagesToShow = 5;
+        let startPage = Math.max(
+          1,
+          currentPage - Math.floor(maxPagesToShow / 2)
+        );
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        if (endPage === totalPages)
+          startPage = Math.max(1, totalPages - maxPagesToShow + 1);
+
+        if (startPage > 1) {
+          paginationControls.append(createPageLink(1, 1));
+          if (startPage > 2)
+            paginationControls.append(createPageLink(0, "...", true)); // Ellipsis
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+          paginationControls.append(
+            createPageLink(i, i, false, i === currentPage)
+          );
+        }
+
+        if (endPage < totalPages) {
+          if (endPage < totalPages - 1)
+            paginationControls.append(createPageLink(0, "...", true)); // Ellipsis
+          paginationControls.append(createPageLink(totalPages, totalPages));
+        }
+
+        // Next button
+        paginationControls.append(
+          createPageLink(currentPage + 1, "&raquo;", currentPage === totalPages)
+        );
+
+        // Click handler
+        paginationControls.find("a.page-link").on("click", function (e) {
+          e.preventDefault();
+          const pageItem = $(this).parent();
+          if (
+            pageItem.find('[aria-disabled="true"]').length > 0 ||
+            pageItem.find(".bg-blue-600").length > 0
+          ) {
+            return; // Prevent click on disabled or active
+          }
+          const targetPage = parseInt($(this).data("page"));
+          if (
+            !isNaN(targetPage) &&
+            targetPage >= 1 &&
+            targetPage <= totalPages
+          ) {
+            fetchResultsForPage(targetPage);
+            // Scroll to top
+            $("html, body").animate(
+              { scrollTop: $("#resultsContainer").offset().top - 80 },
+              300
+            );
+          }
+        });
+      }
+
+      function fetchResultsForPage(pageNumber) {
+        const formData = new FormData(
+          document.getElementById("arxivSearchForm")
+        );
+        const searchParams = new URLSearchParams();
+        let resultsPerPage = 10; // Default
+        for (const pair of formData.entries()) {
+          if (pair[0] === "search_type") {
+            const selectedType = $('input[name="search_type"]:checked').val();
+            searchParams.append(pair[0], selectedType);
+          } else if (pair[0] === "max_results") {
+            resultsPerPage = parseInt(pair[1]) || 10;
+            searchParams.append(pair[0], resultsPerPage);
+          } else if (
+            pair[0] !== "n_clusters" ||
+            formData.get("cluster") === "true"
+          ) {
+            searchParams.append(pair[0], pair[1]);
+          }
+        }
+
+        const start = (pageNumber - 1) * resultsPerPage;
+        searchParams.set("start", start);
+
+        showLoading();
+
+        fetch(`/arxiv/search?${searchParams.toString()}`)
+          .then((response) => response.json())
+          .then((data) => {
+            $("#resultsContainer").removeClass("hidden"); // Show results container
+            if (data.status === "success") {
+              displayArxivResults(data);
+              displayPagination(
+                pageNumber,
+                data.total_results || 0,
+                resultsPerPage
+              );
+            } else {
+              $("#searchResults").html(
+                `<div class="p-4 text-red-700 bg-red-100 rounded-lg">Search failed: ${data.message}</div>`
+              );
+              $("#paginationControls").empty();
+            }
+          })
+          .catch((error) => {
+            $("#resultsContainer").removeClass("hidden"); // Show results container even on error
+            $("#searchResults").html(
+              `<div class="p-4 text-red-700 bg-red-100 rounded-lg">Search error: ${error.message}</div>`
+            );
+            $("#paginationControls").empty();
+          })
+          .finally(() => {
+            hideLoading();
+          });
+      }
+
+      function showPaperDetail(arxivId) {
+        // Populate modal skeleton
         $(".paper-detail-content").html(`
-          <div class="skeleton-loading">
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line"></div>
+          <div class="skeleton-loading p-4 space-y-3">
+            <div class="skeleton-line h-5 w-4/5 rounded"></div>
+            <div class="skeleton-line h-4 w-3/5 rounded"></div>
+            <div class="skeleton-line h-20 w-full rounded"></div>
+            <div class="skeleton-line h-4 w-4/6 rounded"></div>
+            <div class="skeleton-line h-4 w-3/6 rounded"></div>
           </div>
         `);
+        openModal(); // Show modal with skeleton
 
         fetch(`/arxiv/paper/${arxivId}`)
           .then((response) => response.json())
           .then((data) => {
             if (data.status === "success") {
               const paper = data.paper;
+              // Use Tailwind classes for modal content display
               const content = `
-                <div class="paper-metadata">
-                  <dl>
-                    <dt>Title</dt>
-                    <dd class="mb-3">${paper.title}</dd>
-                    
-                    <dt>Authors</dt>
-                    <dd class="mb-3">${paper.authors.join(", ")}</dd>
-                    
-                    <dt>Categories</dt>
-                    <dd class="mb-3">
-                      ${paper.categories
-                        .map(
-                          (cat) => `
-                        <span class="category-tag">${cat}</span>
-                      `
-                        )
-                        .join("")}
-                    </dd>
-                    
-                    <dt>Published Date</dt>
-                    <dd class="mb-3">${new Date(
-                      paper.published
-                    ).toLocaleDateString()}</dd>
-                    
-                    <dt>Last Updated</dt>
-                    <dd class="mb-3">${new Date(
-                      paper.updated
-                    ).toLocaleDateString()}</dd>
-                    
-                    <dt>Abstract</dt>
-                    <dd class="mb-3">${paper.abstract}</dd>
+                <div class="paper-metadata bg-gray-50 p-4 rounded-lg">
+                  <dl class="space-y-4">
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Title</dt>
+                      <dd class="mt-1 text-base text-gray-900">${
+                        paper.title
+                      }</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Authors</dt>
+                      <dd class="mt-1 text-sm text-gray-900">${paper.authors.join(
+                        ", "
+                      )}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Categories</dt>
+                      <dd class="mt-1 flex flex-wrap gap-1">
+                        ${paper.categories
+                          .map(
+                            (cat) =>
+                              `<span class="inline-block bg-gray-200 text-gray-700 text-xs font-medium px-2.5 py-0.5 rounded-full">${cat}</span>`
+                          )
+                          .join("")}
+                      </dd>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                          <dt class="text-sm font-medium text-gray-500">Published Date</dt>
+                          <dd class="mt-1 text-sm text-gray-900">${new Date(
+                            paper.published
+                          ).toLocaleDateString()}</dd>
+                        </div>
+                        <div>
+                          <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+                          <dd class="mt-1 text-sm text-gray-900">${new Date(
+                            paper.updated
+                          ).toLocaleDateString()}</dd>
+                        </div>
+                    </div>
+                    <div>
+                      <dt class="text-sm font-medium text-gray-500">Abstract</dt>
+                      <dd class="mt-1 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">${
+                        paper.abstract
+                      }</dd>
+                    </div>
                   </dl>
-                  
-                  <div class="paper-links">
+                  <div class="paper-links mt-6 flex flex-wrap gap-3 border-t border-gray-200 pt-4">
                     <a href="${
                       paper.pdf_url
-                    }" target="_blank" class="btn btn-primary btn-sm">
-                      <i class="fas fa-file-pdf me-2"></i>Download PDF
+                    }" target="_blank" class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                      <i class="fas fa-file-pdf mr-2"></i>Download PDF
                     </a>
                     <a href="https://arxiv.org/abs/${
                       paper.arxiv_id
-                    }" target="_blank" class="btn btn-outline-secondary btn-sm">
-                      <i class="fas fa-external-link-alt me-2"></i>View on arXiv
+                    }" target="_blank" class="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                      <i class="fas fa-external-link-alt mr-2"></i>View on arXiv
                     </a>
                   </div>
                 </div>
               `;
               $(".paper-detail-content").html(content);
             } else {
-              $(".paper-detail-content").html(`
-                <div class="alert alert-danger">
-                  Failed to get paper details: ${data.message}
-                </div>
-              `);
+              $(".paper-detail-content").html(
+                `<div class="p-4 text-red-700 bg-red-100 rounded-lg">Failed to get paper details: ${data.message}</div>`
+              );
             }
           })
           .catch((error) => {
-            $(".paper-detail-content").html(`
-              <div class="alert alert-danger">
-                Error getting paper details: ${error.message}
-              </div>
-            `);
+            $(".paper-detail-content").html(
+              `<div class="p-4 text-red-700 bg-red-100 rounded-lg">Error getting paper details: ${error.message}</div>`
+            );
           });
       }
 
+      // Helper function to get Tailwind class based on sentiment
+      function getSentimentClass(sentimentLabel) {
+        if (!sentimentLabel) return "bg-gray-100 text-gray-600"; // Default for N/A or missing
+        switch (sentimentLabel.toLowerCase()) {
+          case "positive":
+            return "bg-green-100 text-green-800";
+          case "negative":
+            return "bg-red-100 text-red-800";
+          case "neutral":
+            return "bg-yellow-100 text-yellow-800";
+          case "error":
+            return "bg-purple-100 text-purple-800";
+          default:
+            return "bg-gray-100 text-gray-600"; // Default for N/A etc.
+        }
+      }
+
       $(document).ready(function () {
+        // Enable/disable cluster number input based on dropdown
+        const clusterSelect = $('select[name="cluster"]');
+        const clusterNumberInput = $('input[name="n_clusters"]');
+
+        clusterSelect
+          .on("change", function () {
+            clusterNumberInput.prop("disabled", $(this).val() === "false");
+          })
+          .trigger("change"); // Trigger on load to set initial state
+
         $("#arxivSearchForm").on("submit", function (e) {
           e.preventDefault();
-          const formData = new FormData(this);
-          const searchParams = new URLSearchParams();
-          for (const pair of formData.entries()) {
-            searchParams.append(pair[0], pair[1]);
-          }
-
-          showLoading();
-          $(".results-container").hide();
-          $("#clusterResults").hide();
-
-          fetch(`/arxiv/search?${searchParams.toString()}`)
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.status === "success") {
-                displayArxivResults(data);
-                $(".results-container").show();
-              } else {
-                $("#searchResults").html(`
-                  <div class="alert alert-danger">
-                    Search failed: ${data.message}
-                  </div>
-                `);
-                $(".results-container").show();
-              }
-            })
-            .catch((error) => {
-              $("#searchResults").html(`
-                <div class="alert alert-danger">
-                  Search error: ${error.message}
-                </div>
-              `);
-              $(".results-container").show();
-            })
-            .finally(() => {
-              hideLoading();
-            });
+          // Trigger fetch for page 1 on initial submit
+          fetchResultsForPage(1);
         });
       });
     </script>
